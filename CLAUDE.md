@@ -132,6 +132,22 @@ Dessa regler gäller **alltid** — vid ny kod, ändringar och kodgranskning.
 - Inga `.Result` eller `.Wait()`
 - Inga `async void` (undantag: event handlers)
 
+## 8. Granskning före commit
+
+**Obligatoriskt efter varje ny feature eller ändring, innan commit.**
+
+Gå igenom dessa punkter för den kod som skrivits:
+
+- [ ] **Säkerhet** — autentisering och auktorisering på rätt plats? Känslig data exponeras inte? Input valideras?
+- [ ] **Felhantering** — alla felvägar hanteras? Undantag fångas på rätt nivå? Inga tomma `catch {}`?
+- [ ] **Tester** — nytt beteende täckt? Felflöden testade? Testerna isolerade?
+- [ ] **Async** — inga `.Result`/`.Wait()`? CancellationToken propageras?
+- [ ] **Databasanrop** — N+1-frågor? `AsNoTracking()` på läsningar? Index täcker frågemönstret?
+- [ ] **Konfiguration** — inga hårdkodade hemligheter, URL:er eller miljöspecifika värden?
+- [ ] **CLAUDE.md** — behöver något uppdateras (endpoints, struktur, kommandon)?
+
+Granskningen tar 2–3 minuter och är inte valfri.
+
 ## 7. Schema-ändringar (SQLite)
 
 - `EnsureCreated` skapar schemat vid ny DB — migrations används inte
