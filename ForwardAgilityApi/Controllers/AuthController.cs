@@ -1,5 +1,6 @@
 using ForwardAgilityApi.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ForwardAgilityApi.Controllers;
 
@@ -8,11 +9,17 @@ namespace ForwardAgilityApi.Controllers;
 public class AuthController(IAuthService authService) : ControllerBase
 {
     [HttpPost("login")]
+    [EnableRateLimiting("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
         var result = await authService.LoginAsync(request);
-        if (result is null)
-            return Unauthorized(new { error = "Invalid username or password." });
-        return Ok(result);
+
+        if (result.LockedUntil.HasValue)
+            return StatusCode(429, new { error = result.Error, lockedUntil = result.LockedUntil });
+
+        if (result.Response is null)
+            return Unauthorized(new { error = result.Error });
+
+        return Ok(result.Response);
     }
 }

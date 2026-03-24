@@ -34,6 +34,9 @@ public class ForwardAgilityFactory : WebApplicationFactory<Program>
         builder.UseSetting("Jwt:Key", "test-secret-key-minimum-32-characters-long!");
         builder.UseSetting("Jwt:Issuer", "ForwardAgilityApi");
         builder.UseSetting("Jwt:Audience", "ForwardAgilityApi");
+        builder.UseSetting("Security:LoginRateLimit", "1000");
+        builder.UseSetting("Security:MaxFailedLoginAttempts", "3");
+        builder.UseSetting("Security:LockoutDurationMinutes", "15");
     }
 
     protected override void Dispose(bool disposing)

@@ -6,5 +6,7 @@ public class User
     public required string Username { get; set; }
     public required string PasswordHash { get; set; }
     public required string Role { get; set; }
+    public int FailedLoginAttempts { get; set; }
+    public DateTimeOffset? LockoutEnd { get; set; }
     public ICollection<Post> Posts { get; set; } = [];
 }
