@@ -9,6 +9,7 @@ public class PostsService(AppDbContext db) : IPostsService
     public async Task<List<PostSummaryResponse>> GetAllAsync(bool includeUnpublished = false)
     {
         var posts = await db.Posts
+            .AsNoTracking()
             .Include(p => p.Author)
             .Include(p => p.Tags)
             .Where(p => includeUnpublished || p.Published)
@@ -26,6 +27,7 @@ public class PostsService(AppDbContext db) : IPostsService
     public async Task<ServiceResult<PostDetailResponse>> GetBySlugAsync(string slug, bool includeUnpublished = false)
     {
         var post = await db.Posts
+            .AsNoTracking()
             .Include(p => p.Author)
             .Include(p => p.Tags)
             .FirstOrDefaultAsync(p => p.Slug == slug && (includeUnpublished || p.Published));

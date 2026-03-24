@@ -89,6 +89,9 @@ static void ApplySchemaChanges(AppDbContext db)
     try { db.Database.ExecuteSqlRaw("ALTER TABLE Users ADD COLUMN FailedLoginAttempts INTEGER NOT NULL DEFAULT 0"); } catch { }
     try { db.Database.ExecuteSqlRaw("ALTER TABLE Users ADD COLUMN LockoutEnd TEXT NULL"); } catch { }
 
+    // WAL mode — allows concurrent reads during writes (persistent, no-op on :memory:)
+    db.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL");
+
     // Indexes for common query patterns (idempotent — IF NOT EXISTS)
     db.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS IX_Posts_AuthorId ON Posts(AuthorId)");
     db.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS IX_Posts_Published ON Posts(Published)");
