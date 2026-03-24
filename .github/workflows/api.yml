@@ -1,0 +1,48 @@
+name: API CI/CD
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ForwardAgilityApi/**'
+      - 'ForwardAgilityApi.Tests/**'
+      - 'Dockerfile'
+      - 'fly.toml'
+      - '.github/workflows/api.yml'
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-test-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.103'
+
+      - name: Restore
+        run: dotnet restore ForwardAgilityApi.Tests/ForwardAgilityApi.Tests.csproj
+
+      - name: Build
+        run: dotnet build ForwardAgilityApi.Tests/ForwardAgilityApi.Tests.csproj --no-restore
+
+      - name: Test
+        run: dotnet test ForwardAgilityApi.Tests/ForwardAgilityApi.Tests.csproj --no-build
+        env:
+          Jwt__Key: ${{ secrets.JWT_KEY }}
+          Jwt__Issuer: ForwardAgilityApi
+          Jwt__Audience: ForwardAgilityApi
+
+      - name: Deploy to Fly.io
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Fly deploy
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
