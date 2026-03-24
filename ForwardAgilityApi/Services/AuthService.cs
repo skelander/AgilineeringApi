@@ -17,7 +17,7 @@ public class AuthService(AppDbContext db, IConfiguration configuration) : IAuthS
         if (user is null)
             return new LoginResult(null, "Invalid username or password.", null);
 
-        if (user.LockoutEnd.HasValue && user.LockoutEnd > DateTimeOffset.UtcNow)
+        if (user.LockoutEnd.HasValue && user.LockoutEnd > DateTime.UtcNow)
             return new LoginResult(null, "Account is locked.", user.LockoutEnd);
 
         if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
@@ -27,7 +27,7 @@ public class AuthService(AppDbContext db, IConfiguration configuration) : IAuthS
             if (user.FailedLoginAttempts >= maxAttempts)
             {
                 var lockoutMinutes = configuration.GetValue("Security:LockoutDurationMinutes", 15);
-                user.LockoutEnd = DateTimeOffset.UtcNow.AddMinutes(lockoutMinutes);
+                user.LockoutEnd = DateTime.UtcNow.AddMinutes(lockoutMinutes);
             }
             await db.SaveChangesAsync();
             return new LoginResult(null, "Invalid username or password.", null);

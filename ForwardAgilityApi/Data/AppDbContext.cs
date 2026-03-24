@@ -23,7 +23,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             entity.HasIndex(p => p.Slug).IsUnique();
             entity.HasIndex(p => p.AuthorId);
-            entity.HasIndex(p => p.Published);
+            entity.HasIndex(p => new { p.Published, p.CreatedAt });
             entity.Property(p => p.Title).HasMaxLength(300);
             entity.Property(p => p.Slug).HasMaxLength(300);
             entity.HasOne(p => p.Author)

@@ -13,10 +13,10 @@ public class PostsService(AppDbContext db) : IPostsService
             .Include(p => p.Author)
             .Include(p => p.Tags)
             .Where(p => includeUnpublished || p.Published)
+            .OrderByDescending(p => p.CreatedAt)
             .ToListAsync();
 
         return posts
-            .OrderByDescending(p => p.CreatedAt)
             .Select(p => new PostSummaryResponse(
             p.Id, p.Title, p.Slug, p.Published, p.CreatedAt,
             p.Author.Username,
@@ -44,7 +44,7 @@ public class PostsService(AppDbContext db) : IPostsService
             return ServiceResult<PostDetailResponse>.Conflict($"Post with slug '{request.Slug}' already exists.");
 
         var tags = await db.Tags.Where(t => request.TagIds.Contains(t.Id)).ToListAsync();
-        var now = DateTimeOffset.UtcNow;
+        var now = DateTime.UtcNow;
         var post = new Post
         {
             Title = request.Title,
@@ -79,7 +79,7 @@ public class PostsService(AppDbContext db) : IPostsService
         post.Content = request.Content;
         post.Slug = request.Slug;
         post.Published = request.Published;
-        post.UpdatedAt = DateTimeOffset.UtcNow;
+        post.UpdatedAt = DateTime.UtcNow;
         post.Tags = await db.Tags.Where(t => request.TagIds.Contains(t.Id)).ToListAsync();
 
         await db.SaveChangesAsync();
