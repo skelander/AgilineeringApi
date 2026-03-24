@@ -11,21 +11,34 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<User>()
-            .HasIndex(u => u.Username)
-            .IsUnique();
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.HasIndex(u => u.Username).IsUnique();
+            entity.Property(u => u.Username).HasMaxLength(100);
+            entity.Property(u => u.PasswordHash).HasMaxLength(100);
+            entity.Property(u => u.Role).HasMaxLength(50);
+        });
 
-        modelBuilder.Entity<Post>()
-            .HasIndex(p => p.Slug)
-            .IsUnique();
+        modelBuilder.Entity<Post>(entity =>
+        {
+            entity.HasIndex(p => p.Slug).IsUnique();
+            entity.HasIndex(p => p.AuthorId);
+            entity.HasIndex(p => p.Published);
+            entity.Property(p => p.Title).HasMaxLength(300);
+            entity.Property(p => p.Slug).HasMaxLength(300);
+            entity.HasOne(p => p.Author)
+                .WithMany(u => u.Posts)
+                .HasForeignKey(p => p.AuthorId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
 
-        modelBuilder.Entity<Tag>()
-            .HasIndex(t => t.Slug)
-            .IsUnique();
-
-        modelBuilder.Entity<Tag>()
-            .HasIndex(t => t.Name)
-            .IsUnique();
+        modelBuilder.Entity<Tag>(entity =>
+        {
+            entity.HasIndex(t => t.Slug).IsUnique();
+            entity.HasIndex(t => t.Name).IsUnique();
+            entity.Property(t => t.Name).HasMaxLength(100);
+            entity.Property(t => t.Slug).HasMaxLength(100);
+        });
 
         modelBuilder.Entity<Post>()
             .HasMany(p => p.Tags)

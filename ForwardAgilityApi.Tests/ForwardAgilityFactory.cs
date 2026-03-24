@@ -14,7 +14,7 @@ public class ForwardAgilityFactory : WebApplicationFactory<Program>
 
     public ForwardAgilityFactory()
     {
-        _connection = new SqliteConnection("DataSource=:memory:");
+        _connection = new SqliteConnection("Data Source=:memory:;Foreign Keys=True");
         _connection.Open();
     }
 

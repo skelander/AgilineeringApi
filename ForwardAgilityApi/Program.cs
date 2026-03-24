@@ -5,6 +5,7 @@ using ForwardAgilityApi.Models;
 using ForwardAgilityApi.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -12,9 +13,15 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
+var rawConnectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? "Data Source=forwardagility.db";
+var connectionString = new SqliteConnectionStringBuilder(rawConnectionString)
+{
+    ForeignKeys = true
+}.ToString();
+
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")
-        ?? "Data Source=forwardagility.db"));
+    options.UseSqlite(connectionString));
 
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IPostsService, PostsService>();
@@ -81,6 +88,10 @@ static void ApplySchemaChanges(AppDbContext db)
     // Add lockout columns to existing DBs that predate these fields
     try { db.Database.ExecuteSqlRaw("ALTER TABLE Users ADD COLUMN FailedLoginAttempts INTEGER NOT NULL DEFAULT 0"); } catch { }
     try { db.Database.ExecuteSqlRaw("ALTER TABLE Users ADD COLUMN LockoutEnd TEXT NULL"); } catch { }
+
+    // Indexes for common query patterns (idempotent — IF NOT EXISTS)
+    db.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS IX_Posts_AuthorId ON Posts(AuthorId)");
+    db.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS IX_Posts_Published ON Posts(Published)");
 }
 
 static void SeedData(AppDbContext db)
