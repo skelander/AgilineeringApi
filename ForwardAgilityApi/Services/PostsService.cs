@@ -43,7 +43,12 @@ public class PostsService(AppDbContext db) : IPostsService
         if (await db.Posts.AnyAsync(p => p.Slug == request.Slug))
             return ServiceResult<PostDetailResponse>.Conflict($"Post with slug '{request.Slug}' already exists.");
 
-        var tags = await db.Tags.Where(t => request.TagIds.Contains(t.Id)).ToListAsync();
+        var requestedTagIds = request.TagIds.ToList();
+        var tags = await db.Tags.Where(t => requestedTagIds.Contains(t.Id)).ToListAsync();
+        var missingIds = requestedTagIds.Except(tags.Select(t => t.Id)).ToList();
+        if (missingIds.Count > 0)
+            return ServiceResult<PostDetailResponse>.BadRequest($"Tag IDs not found: {string.Join(", ", missingIds)}.");
+
         var now = DateTime.UtcNow;
         var post = new Post
         {
@@ -80,7 +85,13 @@ public class PostsService(AppDbContext db) : IPostsService
         post.Slug = request.Slug;
         post.Published = request.Published;
         post.UpdatedAt = DateTime.UtcNow;
-        post.Tags = await db.Tags.Where(t => request.TagIds.Contains(t.Id)).ToListAsync();
+        var updatedTagIds = request.TagIds.ToList();
+        var updatedTags = await db.Tags.Where(t => updatedTagIds.Contains(t.Id)).ToListAsync();
+        var missingTagIds = updatedTagIds.Except(updatedTags.Select(t => t.Id)).ToList();
+        if (missingTagIds.Count > 0)
+            return ServiceResult<PostDetailResponse>.BadRequest($"Tag IDs not found: {string.Join(", ", missingTagIds)}.");
+
+        post.Tags = updatedTags;
 
         await db.SaveChangesAsync();
         return ServiceResult<PostDetailResponse>.Ok(ToDetail(post));

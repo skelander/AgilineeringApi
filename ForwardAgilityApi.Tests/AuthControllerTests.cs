@@ -27,11 +27,21 @@ public class AuthControllerTests : IClassFixture<ForwardAgilityFactory>
     [Theory]
     [InlineData("admin", "wrong")]
     [InlineData("nobody", "admin")]
-    [InlineData("", "")]
     public async Task Login_InvalidCredentials_Returns401(string username, string password)
     {
         var response = await _client.PostAsJsonAsync("/auth/login", new LoginRequest(username, password));
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("", "")]
+    [InlineData("admin", "")]
+    [InlineData("", "admin")]
+    [InlineData("   ", "admin")]
+    public async Task Login_EmptyCredentials_Returns400(string username, string password)
+    {
+        var response = await _client.PostAsJsonAsync("/auth/login", new LoginRequest(username, password));
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 }
 

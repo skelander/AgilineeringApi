@@ -67,6 +67,20 @@ public class TagsControllerTests : IClassFixture<ForwardAgilityFactory>
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Theory]
+    [InlineData("", "valid-slug")]
+    [InlineData("   ", "valid-slug")]
+    [InlineData("Valid Name", "")]
+    [InlineData("Valid Name", "Invalid Slug")]
+    [InlineData("Valid Name", "UPPERCASE")]
+    [InlineData("Valid Name", "-leading-hyphen")]
+    public async Task Create_InvalidInput_Returns400(string name, string slug)
+    {
+        await _client.AuthenticateAsync();
+        var response = await _client.PostAsJsonAsync("/tags", new CreateTagRequest(name, slug));
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     [Fact]
     public async Task PostWithTags_TagsReturnedInResponse()
     {

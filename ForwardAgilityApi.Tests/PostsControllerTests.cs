@@ -123,4 +123,56 @@ public class PostsControllerTests : IClassFixture<ForwardAgilityFactory>
         var response = await _client.DeleteAsync("/posts/99999");
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
+
+    [Theory]
+    [InlineData("", "content", "valid-slug")]
+    [InlineData("   ", "content", "valid-slug")]
+    [InlineData("title", "", "valid-slug")]
+    [InlineData("title", "content", "")]
+    [InlineData("title", "content", "Invalid Slug")]
+    [InlineData("title", "content", "UPPERCASE")]
+    [InlineData("title", "content", "-leading-hyphen")]
+    [InlineData("title", "content", "trailing-hyphen-")]
+    public async Task Create_InvalidInput_Returns400(string title, string content, string slug)
+    {
+        await _client.AuthenticateAsync();
+        var response = await _client.PostAsJsonAsync("/posts",
+            new CreatePostRequest(title, content, slug, true, []));
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_NonExistentTagIds_Returns400()
+    {
+        await _client.AuthenticateAsync();
+        var response = await _client.PostAsJsonAsync("/posts",
+            new CreatePostRequest("Title", "Content", "tag-id-test", true, [99999]));
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Update_InvalidSlug_Returns400()
+    {
+        await _client.AuthenticateAsync();
+        var create = await _client.PostAsJsonAsync("/posts",
+            new CreatePostRequest("Original", "Body", "update-validation", true, []));
+        var created = await create.Content.ReadFromJsonAsync<PostDetailResponse>();
+
+        var response = await _client.PutAsJsonAsync($"/posts/{created!.Id}",
+            new UpdatePostRequest("Title", "Content", "Invalid Slug", true, []));
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Update_NonExistentTagIds_Returns400()
+    {
+        await _client.AuthenticateAsync();
+        var create = await _client.PostAsJsonAsync("/posts",
+            new CreatePostRequest("Tag Update Test", "Body", "tag-update-test", true, []));
+        var created = await create.Content.ReadFromJsonAsync<PostDetailResponse>();
+
+        var response = await _client.PutAsJsonAsync($"/posts/{created!.Id}",
+            new UpdatePostRequest("Title", "Content", "tag-update-test", true, [99999]));
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
 }
