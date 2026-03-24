@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using System.Text.RegularExpressions;
 using ForwardAgilityApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,8 +9,6 @@ namespace ForwardAgilityApi.Controllers;
 [Route("posts")]
 public class PostsController(IPostsService postsService) : ControllerBase
 {
-    private static readonly Regex SlugPattern =
-        new(@"^[a-z0-9]+(?:-[a-z0-9]+)*$", RegexOptions.Compiled);
 
     [HttpGet]
     public async Task<IActionResult> GetAll()
@@ -96,7 +93,7 @@ public class PostsController(IPostsService postsService) : ControllerBase
             return BadRequest(new { error = "Slug is required." });
         if (slug.Length > 300)
             return BadRequest(new { error = "Slug must be 300 characters or fewer." });
-        if (!SlugPattern.IsMatch(slug))
+        if (!SlugValidator.IsValid(slug))
             return BadRequest(new { error = "Slug must contain only lowercase letters, numbers, and hyphens." });
         return null;
     }

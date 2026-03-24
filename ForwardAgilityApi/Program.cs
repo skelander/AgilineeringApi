@@ -73,7 +73,7 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.EnsureCreated();
     ApplySchemaChanges(db);
-    SeedData(db);
+    await SeedDataAsync(db);
 }
 
 app.UseCors();
@@ -97,9 +97,9 @@ static void ApplySchemaChanges(AppDbContext db)
     db.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS IX_Posts_Published_CreatedAt ON Posts(Published, CreatedAt DESC)");
 }
 
-static void SeedData(AppDbContext db)
+static async Task SeedDataAsync(AppDbContext db)
 {
-    if (!db.Users.Any())
+    if (!await db.Users.AnyAsync())
     {
         db.Users.Add(new User
         {
@@ -107,7 +107,7 @@ static void SeedData(AppDbContext db)
             PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin"),
             Role = "admin"
         });
-        db.SaveChanges();
+        await db.SaveChangesAsync();
     }
 }
 

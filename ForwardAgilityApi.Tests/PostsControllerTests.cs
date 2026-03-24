@@ -90,6 +90,17 @@ public class PostsControllerTests : IClassFixture<ForwardAgilityFactory>
     }
 
     [Fact]
+    public async Task GetBySlug_UnpublishedPost_Anonymous_Returns404()
+    {
+        await _client.AuthenticateAsync();
+        await _client.PostAsJsonAsync("/posts", new CreatePostRequest("Hidden Draft", "Body", "hidden-draft", false, []));
+        _client.DefaultRequestHeaders.Authorization = null;
+
+        var response = await _client.GetAsync("/posts/hidden-draft");
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Update_AsAdmin_Returns200()
     {
         await _client.AuthenticateAsync();
