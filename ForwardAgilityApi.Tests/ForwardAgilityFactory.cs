@@ -37,6 +37,7 @@ public class ForwardAgilityFactory : WebApplicationFactory<Program>
         builder.UseSetting("Security:LoginRateLimit", "1000");
         builder.UseSetting("Security:MaxFailedLoginAttempts", "3");
         builder.UseSetting("Security:LockoutDurationMinutes", "15");
+        builder.UseSetting("Storage:ImagesPath", Path.Combine(Path.GetTempPath(), "forwardagility-test-images"));
     }
 
     protected override void Dispose(bool disposing)

@@ -77,6 +77,18 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.UseCors();
+
+var imagesPath = app.Configuration["Storage:ImagesPath"] ?? "images";
+var imagesDir = Path.IsPathRooted(imagesPath)
+    ? imagesPath
+    : Path.Combine(app.Environment.ContentRootPath, imagesPath);
+Directory.CreateDirectory(imagesDir);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(imagesDir),
+    RequestPath = "/images"
+});
+
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
