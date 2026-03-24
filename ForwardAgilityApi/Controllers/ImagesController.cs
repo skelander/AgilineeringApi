@@ -22,7 +22,7 @@ public class ImagesController(IConfiguration configuration, IWebHostEnvironment 
 
         var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
         if (!AllowedExtensions.Contains(ext))
-            return BadRequest(new { error = "Only jpg, png, gif, and webp images are allowed." });
+            return BadRequest(new { error = "Only jpg, jpeg, png, gif, and webp images are allowed." });
 
         var imagesPath = configuration["Storage:ImagesPath"] ?? "images";
         var dir = Path.IsPathRooted(imagesPath)

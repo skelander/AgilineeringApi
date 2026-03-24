@@ -53,6 +53,6 @@ public class AuthService(AppDbContext db, IConfiguration configuration) : IAuthS
             expires: DateTime.UtcNow.AddHours(8),
             signingCredentials: creds);
 
-        return new LoginResult(new LoginResponse(new JwtSecurityTokenHandler().WriteToken(token)), null, null);
+        return new LoginResult(new LoginResponse(new JwtSecurityTokenHandler().WriteToken(token), user.Role), null, null);
     }
 }

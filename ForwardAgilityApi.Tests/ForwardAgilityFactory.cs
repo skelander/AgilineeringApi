@@ -11,6 +11,7 @@ namespace ForwardAgilityApi.Tests;
 public class ForwardAgilityFactory : WebApplicationFactory<Program>
 {
     private readonly DbConnection _connection;
+    private readonly string _imagesDir = Path.Combine(Path.GetTempPath(), $"fa-test-{Guid.NewGuid():N}");
 
     public ForwardAgilityFactory()
     {
@@ -37,13 +38,16 @@ public class ForwardAgilityFactory : WebApplicationFactory<Program>
         builder.UseSetting("Security:LoginRateLimit", "1000");
         builder.UseSetting("Security:MaxFailedLoginAttempts", "3");
         builder.UseSetting("Security:LockoutDurationMinutes", "15");
-        builder.UseSetting("Storage:ImagesPath", Path.Combine(Path.GetTempPath(), "forwardagility-test-images"));
+        builder.UseSetting("Storage:ImagesPath", _imagesDir);
     }
 
     protected override void Dispose(bool disposing)
     {
         base.Dispose(disposing);
         if (disposing)
+        {
             _connection.Dispose();
+            try { Directory.Delete(_imagesDir, recursive: true); } catch { }
+        }
     }
 }

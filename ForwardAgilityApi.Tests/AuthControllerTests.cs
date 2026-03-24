@@ -22,6 +22,7 @@ public class AuthControllerTests : IClassFixture<ForwardAgilityFactory>
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<LoginResponse>();
         Assert.NotNull(body?.Token);
+        Assert.Equal("admin", body!.Role);
     }
 
     [Theory]

@@ -71,8 +71,9 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var startupLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     db.Database.EnsureCreated();
-    ApplySchemaChanges(db);
+    ApplySchemaChanges(db, startupLogger);
     await SeedDataAsync(db);
 }
 
@@ -95,11 +96,13 @@ app.UseAuthorization();
 app.MapControllers();
 app.Run();
 
-static void ApplySchemaChanges(AppDbContext db)
+static void ApplySchemaChanges(AppDbContext db, ILogger logger)
 {
-    // Add lockout columns to existing DBs that predate these fields
-    try { db.Database.ExecuteSqlRaw("ALTER TABLE Users ADD COLUMN FailedLoginAttempts INTEGER NOT NULL DEFAULT 0"); } catch { }
-    try { db.Database.ExecuteSqlRaw("ALTER TABLE Users ADD COLUMN LockoutEnd TEXT NULL"); } catch { }
+    // Add lockout columns to existing DBs that predate these fields.
+    // SQLite throws "duplicate column name" if the column already exists — that's expected and ignored.
+    // Any other exception is logged as a warning (app continues but schema may be inconsistent).
+    TryAlterTable(db, logger, "ALTER TABLE Users ADD COLUMN FailedLoginAttempts INTEGER NOT NULL DEFAULT 0");
+    TryAlterTable(db, logger, "ALTER TABLE Users ADD COLUMN LockoutEnd TEXT NULL");
 
     // WAL mode — allows concurrent reads during writes (persistent, no-op on :memory:)
     db.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL");
@@ -120,6 +123,22 @@ static async Task SeedDataAsync(AppDbContext db)
             Role = "admin"
         });
         await db.SaveChangesAsync();
+    }
+}
+
+static void TryAlterTable(AppDbContext db, ILogger logger, string sql)
+{
+    try
+    {
+        db.Database.ExecuteSqlRaw(sql);
+    }
+    catch (SqliteException ex) when (ex.Message.Contains("duplicate column name"))
+    {
+        // Column already exists — expected when upgrading an existing database
+    }
+    catch (Exception ex)
+    {
+        logger.LogWarning(ex, "Unexpected error running schema change: {Sql}", sql);
     }
 }
 
