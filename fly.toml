@@ -7,6 +7,7 @@ primary_region = "arn"
   ASPNETCORE_ENVIRONMENT = "Production"
   ConnectionStrings__DefaultConnection = "Data Source=/data/forwardagility.db"
   Storage__ImagesPath = "/data/images"
+  Cors__Origins__0 = "https://skelander.github.io"
 
 [[mounts]]
   source = "forwardagility_data"
@@ -24,6 +25,14 @@ primary_region = "arn"
   [[services.ports]]
     handlers = ["tls", "http"]
     port = 443
+
+  [[services.http_checks]]
+    interval = "15s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "get"
+    path = "/health"
+    protocol = "http"
 
   [services.concurrency]
     hard_limit = 25

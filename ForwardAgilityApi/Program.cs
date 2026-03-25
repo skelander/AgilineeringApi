@@ -86,6 +86,14 @@ using (var scope = app.Services.CreateScope())
     await SeedDataAsync(db);
 }
 
+app.Use(async (context, next) =>
+{
+    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    context.Response.Headers["X-Frame-Options"] = "DENY";
+    context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    await next();
+});
+
 app.UseCors();
 
 var imagesPath = app.Configuration["Storage:ImagesPath"] ?? "images";
@@ -103,6 +111,7 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
 app.Run();
 
 static void ApplySchemaChanges(AppDbContext db, ILogger logger)
