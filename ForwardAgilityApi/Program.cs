@@ -128,6 +128,7 @@ static void ApplySchemaChanges(AppDbContext db, ILogger logger)
     // Indexes for common query patterns (idempotent — IF NOT EXISTS)
     db.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS IX_Posts_AuthorId ON Posts(AuthorId)");
     db.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS IX_Posts_Published_CreatedAt ON Posts(Published, CreatedAt DESC)");
+    db.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS IX_PostTag_TagsId ON PostTag(TagsId)");
 }
 
 static async Task SeedDataAsync(AppDbContext db)
