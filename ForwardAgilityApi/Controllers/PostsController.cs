@@ -2,6 +2,7 @@ using System.Security.Claims;
 using ForwardAgilityApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ForwardAgilityApi.Controllers;
 
@@ -32,6 +33,7 @@ public class PostsController(IPostsService postsService) : ControllerBase
 
     [HttpPost]
     [Authorize(Roles = "admin")]
+    [EnableRateLimiting("write")]
     public async Task<IActionResult> Create([FromBody] CreatePostRequest request)
     {
         var validation = ValidatePostFields(request.Title, request.Content, request.Slug);
@@ -52,6 +54,7 @@ public class PostsController(IPostsService postsService) : ControllerBase
 
     [HttpPut("{id:int}")]
     [Authorize(Roles = "admin")]
+    [EnableRateLimiting("write")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdatePostRequest request)
     {
         var validation = ValidatePostFields(request.Title, request.Content, request.Slug);

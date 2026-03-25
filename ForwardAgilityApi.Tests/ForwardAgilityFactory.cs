@@ -36,6 +36,7 @@ public class ForwardAgilityFactory : WebApplicationFactory<Program>
         builder.UseSetting("Jwt:Issuer", "ForwardAgilityApi");
         builder.UseSetting("Jwt:Audience", "ForwardAgilityApi");
         builder.UseSetting("Security:LoginRateLimit", "1000");
+        builder.UseSetting("Security:WriteRateLimit", "1000");
         builder.UseSetting("Security:MaxFailedLoginAttempts", "3");
         builder.UseSetting("Security:LockoutDurationMinutes", "15");
         builder.UseSetting("Storage:ImagesPath", _imagesDir);

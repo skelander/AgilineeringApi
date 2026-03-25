@@ -63,6 +63,15 @@ builder.Services.AddRateLimiter(options =>
                 PermitLimit = builder.Configuration.GetValue("Security:LoginRateLimit", 10),
                 QueueLimit = 0,
             }));
+    options.AddPolicy("write", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                Window = TimeSpan.FromMinutes(1),
+                PermitLimit = builder.Configuration.GetValue("Security:WriteRateLimit", 30),
+                QueueLimit = 0,
+            }));
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
 

@@ -1,6 +1,7 @@
 using ForwardAgilityApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ForwardAgilityApi.Controllers;
 
@@ -15,6 +16,7 @@ public class TagsController(ITagsService tagsService) : ControllerBase
 
     [HttpPost]
     [Authorize(Roles = "admin")]
+    [EnableRateLimiting("write")]
     public async Task<IActionResult> Create([FromBody] CreateTagRequest request)
     {
         var validation = ValidateTagRequest(request);

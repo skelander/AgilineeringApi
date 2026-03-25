@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ForwardAgilityApi.Controllers;
 
@@ -12,6 +13,7 @@ public class ImagesController(IConfiguration configuration, IWebHostEnvironment 
 
     [HttpPost]
     [Authorize(Roles = "admin")]
+    [EnableRateLimiting("write")]
     public async Task<IActionResult> Upload(IFormFile file)
     {
         if (file is null || file.Length == 0)

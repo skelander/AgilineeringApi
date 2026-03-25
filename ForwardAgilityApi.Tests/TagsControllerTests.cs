@@ -82,6 +82,25 @@ public class TagsControllerTests : IClassFixture<ForwardAgilityFactory>
     }
 
     [Fact]
+    public async Task Delete_TagUsedByPost_Returns204AndPostLosesTag()
+    {
+        await _client.AuthenticateAsync();
+        var tagResp = await _client.PostAsJsonAsync("/tags", new CreateTagRequest("Removable", "removable"));
+        var tag = await tagResp.Content.ReadFromJsonAsync<TagResponse>();
+
+        await _client.PostAsJsonAsync("/posts",
+            new CreatePostRequest("Post with tag", "Body", "post-with-removable-tag", true, [tag!.Id]));
+
+        var deleteResp = await _client.DeleteAsync($"/tags/{tag!.Id}");
+        Assert.Equal(HttpStatusCode.NoContent, deleteResp.StatusCode);
+
+        // Post still exists but no longer has the tag
+        var post = await _client.GetFromJsonAsync<PostDetailResponse>("/posts/post-with-removable-tag");
+        Assert.NotNull(post);
+        Assert.DoesNotContain(post!.Tags, t => t.Id == tag.Id);
+    }
+
+    [Fact]
     public async Task PostWithTags_TagsReturnedInResponse()
     {
         await _client.AuthenticateAsync();
