@@ -23,7 +23,7 @@ public class AuthService(AppDbContext db, IConfiguration configuration) : IAuthS
         if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
         {
             user.FailedLoginAttempts++;
-            var maxAttempts = configuration.GetValue("Security:MaxFailedLoginAttempts", 5);
+            var maxAttempts = Math.Max(1, configuration.GetValue("Security:MaxFailedLoginAttempts", 5));
             if (user.FailedLoginAttempts >= maxAttempts)
             {
                 var lockoutMinutes = configuration.GetValue("Security:LockoutDurationMinutes", 15);
