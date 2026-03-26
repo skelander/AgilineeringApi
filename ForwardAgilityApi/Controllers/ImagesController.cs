@@ -36,8 +36,16 @@ public class ImagesController(IConfiguration configuration, IWebHostEnvironment 
         var fileName = $"{Guid.NewGuid():N}{ext}";
         var fullPath = Path.Combine(dir, fileName);
 
-        await using var stream = System.IO.File.Create(fullPath);
-        await file.CopyToAsync(stream);
+        try
+        {
+            await using var stream = System.IO.File.Create(fullPath);
+            await file.CopyToAsync(stream);
+        }
+        catch
+        {
+            System.IO.File.Delete(fullPath);
+            throw;
+        }
 
         logger.LogInformation("Image uploaded: {FileName}", fileName);
 
