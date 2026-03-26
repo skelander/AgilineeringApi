@@ -12,10 +12,15 @@ public class PostsController(IPostsService postsService) : ControllerBase
 {
 
     [HttpGet]
-    public async Task<IActionResult> GetAll()
+    public async Task<IActionResult> GetAll(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string? tag = null)
     {
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 50);
         var isAdmin = User.IsInRole("admin");
-        return Ok(await postsService.GetAllAsync(includeUnpublished: isAdmin));
+        return Ok(await postsService.GetAllAsync(includeUnpublished: isAdmin, page: page, pageSize: pageSize, tag: tag));
     }
 
     [HttpGet("{slug}")]

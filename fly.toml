@@ -8,6 +8,7 @@ primary_region = "arn"
   ConnectionStrings__DefaultConnection = "Data Source=/data/forwardagility.db"
   Storage__ImagesPath = "/data/images"
   Cors__Origins__0 = "https://skelander.github.io"
+  Site__BaseUrl = "https://skelander.github.io/ForwardAgility"
 
 [[mounts]]
   source = "forwardagility_data"

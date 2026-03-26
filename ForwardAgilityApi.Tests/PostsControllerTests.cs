@@ -22,7 +22,8 @@ public class PostsControllerTests : IClassFixture<ForwardAgilityFactory>
         await _client.PostAsJsonAsync("/posts", new CreatePostRequest("Published", "Body", "published-post", true, []));
         _client.DefaultRequestHeaders.Authorization = null;
 
-        var posts = await _client.GetFromJsonAsync<List<PostSummaryResponse>>("/posts");
+        var result = await _client.GetFromJsonAsync<PagedResult<PostSummaryResponse>>("/posts");
+        var posts = result?.Items.ToList();
         Assert.NotNull(posts);
         Assert.All(posts, p => Assert.True(p.Published));
         Assert.Contains(posts, p => p.Slug == "published-post");
@@ -35,7 +36,8 @@ public class PostsControllerTests : IClassFixture<ForwardAgilityFactory>
         await _client.AuthenticateAsync();
         await _client.PostAsJsonAsync("/posts", new CreatePostRequest("Admin Draft", "Body", "admin-draft", false, []));
 
-        var posts = await _client.GetFromJsonAsync<List<PostSummaryResponse>>("/posts");
+        var result = await _client.GetFromJsonAsync<PagedResult<PostSummaryResponse>>("/posts?pageSize=50");
+        var posts = result?.Items.ToList();
         Assert.NotNull(posts);
         Assert.Contains(posts, p => p.Slug == "admin-draft");
     }
@@ -185,5 +187,71 @@ public class PostsControllerTests : IClassFixture<ForwardAgilityFactory>
         var response = await _client.PutAsJsonAsync($"/posts/{created!.Id}",
             new UpdatePostRequest("Title", "Content", "tag-update-test", true, [99999]));
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetAll_Pagination_ReturnsCorrectPage()
+    {
+        await _client.AuthenticateAsync();
+        await _client.PostAsJsonAsync("/posts", new CreatePostRequest("Page Post 1", "Body", "page-post-1", true, []));
+        await _client.PostAsJsonAsync("/posts", new CreatePostRequest("Page Post 2", "Body", "page-post-2", true, []));
+        await _client.PostAsJsonAsync("/posts", new CreatePostRequest("Page Post 3", "Body", "page-post-3", true, []));
+
+        var result = await _client.GetFromJsonAsync<PagedResult<PostSummaryResponse>>("/posts?page=1&pageSize=2");
+        Assert.NotNull(result);
+        Assert.Equal(2, result!.Items.Count());
+        Assert.True(result.TotalCount >= 3);
+        Assert.True(result.TotalPages >= 2);
+    }
+
+    [Fact]
+    public async Task GetAll_TagFilter_ReturnsOnlyMatchingPosts()
+    {
+        await _client.AuthenticateAsync();
+        var tagResp = await _client.PostAsJsonAsync("/tags", new CreateTagRequest("Filter Tag", "filter-tag"));
+        var tag = await tagResp.Content.ReadFromJsonAsync<TagResponse>();
+
+        await _client.PostAsJsonAsync("/posts", new CreatePostRequest("Tagged", "Body", "tagged-filter-post", true, [tag!.Id]));
+        await _client.PostAsJsonAsync("/posts", new CreatePostRequest("Untagged", "Body", "untagged-filter-post", true, []));
+        _client.DefaultRequestHeaders.Authorization = null;
+
+        var result = await _client.GetFromJsonAsync<PagedResult<PostSummaryResponse>>("/posts?tag=filter-tag");
+        Assert.NotNull(result);
+        Assert.Contains(result!.Items, p => p.Slug == "tagged-filter-post");
+        Assert.DoesNotContain(result.Items, p => p.Slug == "untagged-filter-post");
+    }
+
+    [Fact]
+    public async Task GetAll_InvalidTag_ReturnsEmptyPage()
+    {
+        var result = await _client.GetFromJsonAsync<PagedResult<PostSummaryResponse>>("/posts?tag=nonexistent-tag");
+        Assert.NotNull(result);
+        Assert.Empty(result!.Items);
+        Assert.Equal(0, result.TotalCount);
+    }
+
+    [Fact]
+    public async Task GetSitemap_Returns200WithXml()
+    {
+        await _client.AuthenticateAsync();
+        await _client.PostAsJsonAsync("/posts", new CreatePostRequest("Sitemap Post", "Body", "sitemap-post", true, []));
+
+        var response = await _client.GetAsync("/sitemap.xml");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("application/xml", response.Content.Headers.ContentType?.MediaType);
+        var xml = await response.Content.ReadAsStringAsync();
+        Assert.Contains("sitemap-post", xml);
+        Assert.Contains("<urlset", xml);
+    }
+
+    [Fact]
+    public async Task GetSitemap_DoesNotIncludeUnpublishedPosts()
+    {
+        await _client.AuthenticateAsync();
+        await _client.PostAsJsonAsync("/posts", new CreatePostRequest("Hidden Sitemap", "Body", "hidden-sitemap-post", false, []));
+
+        var response = await _client.GetAsync("/sitemap.xml");
+        var xml = await response.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("hidden-sitemap-post", xml);
     }
 }
