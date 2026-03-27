@@ -205,6 +205,22 @@ public class PostsControllerTests : IClassFixture<ForwardAgilityFactory>
     }
 
     [Fact]
+    public async Task GetAll_PageZero_TreatsAsPageOne()
+    {
+        var result = await _client.GetFromJsonAsync<PagedResult<PostSummaryResponse>>("/posts?page=0");
+        Assert.NotNull(result);
+        Assert.Equal(1, result!.Page);
+    }
+
+    [Fact]
+    public async Task GetAll_PageSizeOverMax_ClampsTo50()
+    {
+        var result = await _client.GetFromJsonAsync<PagedResult<PostSummaryResponse>>("/posts?pageSize=100");
+        Assert.NotNull(result);
+        Assert.Equal(50, result!.PageSize);
+    }
+
+    [Fact]
     public async Task GetAll_TagFilter_ReturnsOnlyMatchingPosts()
     {
         await _client.AuthenticateAsync();
