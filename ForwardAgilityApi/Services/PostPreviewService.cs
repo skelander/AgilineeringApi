@@ -27,20 +27,6 @@ public class PostPreviewService(AppDbContext db) : IPostPreviewService
         return ServiceResult<PreviewResponse>.Ok(ToResponse(preview));
     }
 
-    public async Task<ServiceResult<List<PreviewResponse>>> GetByPostAsync(int postId)
-    {
-        var postExists = await db.Posts.AnyAsync(p => p.Id == postId);
-        if (!postExists)
-            return ServiceResult<List<PreviewResponse>>.NotFound("Post not found.");
-
-        var previews = await db.PostPreviews
-            .AsNoTracking()
-            .Where(pp => pp.PostId == postId)
-            .OrderByDescending(pp => pp.CreatedAt)
-            .ToListAsync();
-        return ServiceResult<List<PreviewResponse>>.Ok(previews.Select(ToResponse).ToList());
-    }
-
     public async Task<ServiceResult<PostDetailResponse>> AccessAsync(string token, PreviewAccessRequest request)
     {
         var preview = await db.PostPreviews
@@ -63,17 +49,6 @@ public class PostPreviewService(AppDbContext db) : IPostPreviewService
             post.Id, post.Title, post.Content, post.Slug, post.Published,
             post.CreatedAt, post.UpdatedAt, post.Author.Username,
             post.Tags.Select(t => new TagResponse(t.Id, t.Name, t.Slug))));
-    }
-
-    public async Task<ServiceResult> DeleteAsync(int postId, int previewId)
-    {
-        var preview = await db.PostPreviews.FindAsync(previewId);
-        if (preview is null || preview.PostId != postId)
-            return ServiceResult.NotFound("Preview not found.");
-
-        db.PostPreviews.Remove(preview);
-        await db.SaveChangesAsync();
-        return ServiceResult.Ok();
     }
 
     private static PreviewResponse ToResponse(PostPreview pp) =>

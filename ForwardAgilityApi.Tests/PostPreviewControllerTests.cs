@@ -183,70 +183,6 @@ public class PostPreviewControllerTests : IClassFixture<ForwardAgilityFactory>
         Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
     }
 
-    // --- Get previews ---
-
-    [Fact]
-    public async Task GetByPost_AsAdmin_ReturnsList()
-    {
-        var post = await CreateDraftAsync("get-previews-draft");
-        await _client.PostAsJsonAsync($"/posts/{post.Id}/previews", new CreatePreviewRequest("A", "secret"));
-        await _client.PostAsJsonAsync($"/posts/{post.Id}/previews", new CreatePreviewRequest("B", "secret"));
-
-        var resp = await _client.GetAsync($"/posts/{post.Id}/previews");
-
-        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
-        var list = await resp.Content.ReadFromJsonAsync<List<PreviewResponse>>();
-        Assert.NotNull(list);
-        Assert.Equal(2, list!.Count);
-    }
-
-    [Fact]
-    public async Task GetByPost_Unauthenticated_Returns401()
-    {
-        await _client.AuthenticateAsync();
-        var post = await CreateDraftAsync("get-previews-unauth");
-        _client.DefaultRequestHeaders.Authorization = null;
-
-        var resp = await _client.GetAsync($"/posts/{post.Id}/previews");
-
-        Assert.Equal(HttpStatusCode.Unauthorized, resp.StatusCode);
-    }
-
-    [Fact]
-    public async Task GetByPost_NonExistentPost_Returns404()
-    {
-        await _client.AuthenticateAsync();
-
-        var resp = await _client.GetAsync("/posts/99999/previews");
-
-        Assert.Equal(HttpStatusCode.NotFound, resp.StatusCode);
-    }
-
-    // --- Delete preview ---
-
-    [Fact]
-    public async Task Delete_AsAdmin_Returns204()
-    {
-        var post = await CreateDraftAsync("delete-preview-draft");
-        var createResp = await _client.PostAsJsonAsync($"/posts/{post.Id}/previews",
-            new CreatePreviewRequest("Anna", "secret"));
-        var preview = await createResp.Content.ReadFromJsonAsync<PreviewResponse>();
-
-        var resp = await _client.DeleteAsync($"/posts/{post.Id}/previews/{preview!.Id}");
-
-        Assert.Equal(HttpStatusCode.NoContent, resp.StatusCode);
-    }
-
-    [Fact]
-    public async Task Delete_NonExistent_Returns404()
-    {
-        await _client.AuthenticateAsync();
-
-        var resp = await _client.DeleteAsync("/posts/1/previews/99999");
-
-        Assert.Equal(HttpStatusCode.NotFound, resp.StatusCode);
-    }
-
     [Fact]
     public async Task DeletePost_CascadesPreviewDeletion()
     {
@@ -259,23 +195,6 @@ public class PostPreviewControllerTests : IClassFixture<ForwardAgilityFactory>
         _client.DefaultRequestHeaders.Authorization = null;
 
         var resp = await _client.PostAsJsonAsync($"/posts/preview/{preview!.Token}/access",
-            new PreviewAccessRequest("Anna", "secret"));
-
-        // Returns 401 (not 404) to prevent token enumeration
-        Assert.Equal(HttpStatusCode.Unauthorized, resp.StatusCode);
-    }
-
-    [Fact]
-    public async Task Access_AfterDelete_Returns401()
-    {
-        var post = await CreateDraftAsync("access-after-delete");
-        var createResp = await _client.PostAsJsonAsync($"/posts/{post.Id}/previews",
-            new CreatePreviewRequest("Anna", "secret"));
-        var preview = await createResp.Content.ReadFromJsonAsync<PreviewResponse>();
-        await _client.DeleteAsync($"/posts/{post.Id}/previews/{preview!.Id}");
-        _client.DefaultRequestHeaders.Authorization = null;
-
-        var resp = await _client.PostAsJsonAsync($"/posts/preview/{preview.Token}/access",
             new PreviewAccessRequest("Anna", "secret"));
 
         // Returns 401 (not 404) to prevent token enumeration

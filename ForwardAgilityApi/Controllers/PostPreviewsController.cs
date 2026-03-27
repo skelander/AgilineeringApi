@@ -31,32 +31,6 @@ public class PostPreviewsController(IPostPreviewService previewService) : Contro
             _ => StatusCode(500)
         };
     }
-
-    [HttpGet]
-    [Authorize(Roles = "admin")]
-    public async Task<IActionResult> GetByPost(int postId)
-    {
-        var result = await previewService.GetByPostAsync(postId);
-        return result.Status switch
-        {
-            ServiceResultStatus.Ok => Ok(result.Value),
-            ServiceResultStatus.NotFound => NotFound(new { error = result.Error }),
-            _ => StatusCode(500)
-        };
-    }
-
-    [HttpDelete("{id:int}")]
-    [Authorize(Roles = "admin")]
-    public async Task<IActionResult> Delete(int postId, int id)
-    {
-        var result = await previewService.DeleteAsync(postId, id);
-        return result.Status switch
-        {
-            ServiceResultStatus.Ok => NoContent(),
-            ServiceResultStatus.NotFound => NotFound(new { error = result.Error }),
-            _ => StatusCode(500)
-        };
-    }
 }
 
 [ApiController]
