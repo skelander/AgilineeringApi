@@ -62,7 +62,7 @@ public class AuthService(AppDbContext db, IConfiguration configuration, ILogger<
             issuer: configuration["Jwt:Issuer"],
             audience: configuration["Jwt:Audience"],
             claims: claims,
-            expires: DateTime.UtcNow.AddHours(8),
+            expires: DateTime.UtcNow.AddHours(configuration.GetValue("Jwt:ExpiryHours", 8)),
             signingCredentials: creds);
 
         return new LoginResult(new LoginResponse(new JwtSecurityTokenHandler().WriteToken(token), user.Role), null, null);

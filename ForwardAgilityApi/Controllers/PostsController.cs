@@ -104,6 +104,8 @@ public class PostsController(IPostsService postsService, ILogger<PostsController
             return BadRequest(new { error = "Title must be 300 characters or fewer." });
         if (string.IsNullOrWhiteSpace(content))
             return BadRequest(new { error = "Content is required." });
+        if (content.Length > 500_000)
+            return BadRequest(new { error = "Content must be 500,000 characters or fewer." });
         if (string.IsNullOrWhiteSpace(slug))
             return BadRequest(new { error = "Slug is required." });
         if (slug.Length > 300)
