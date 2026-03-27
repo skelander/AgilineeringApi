@@ -158,14 +158,15 @@ public class PostPreviewControllerTests : IClassFixture<ForwardAgilityFactory>
     }
 
     [Fact]
-    public async Task Access_NonExistentToken_Returns404()
+    public async Task Access_NonExistentToken_Returns401()
     {
         _client.DefaultRequestHeaders.Authorization = null;
 
         var resp = await _client.PostAsJsonAsync("/posts/preview/doesnotexist/access",
             new PreviewAccessRequest("Anna", "secret"));
 
-        Assert.Equal(HttpStatusCode.NotFound, resp.StatusCode);
+        // Returns 401 (not 404) to prevent token enumeration via status code differences
+        Assert.Equal(HttpStatusCode.Unauthorized, resp.StatusCode);
     }
 
     [Theory]
@@ -260,11 +261,12 @@ public class PostPreviewControllerTests : IClassFixture<ForwardAgilityFactory>
         var resp = await _client.PostAsJsonAsync($"/posts/preview/{preview!.Token}/access",
             new PreviewAccessRequest("Anna", "secret"));
 
-        Assert.Equal(HttpStatusCode.NotFound, resp.StatusCode);
+        // Returns 401 (not 404) to prevent token enumeration
+        Assert.Equal(HttpStatusCode.Unauthorized, resp.StatusCode);
     }
 
     [Fact]
-    public async Task Access_AfterDelete_Returns404()
+    public async Task Access_AfterDelete_Returns401()
     {
         var post = await CreateDraftAsync("access-after-delete");
         var createResp = await _client.PostAsJsonAsync($"/posts/{post.Id}/previews",
@@ -276,6 +278,7 @@ public class PostPreviewControllerTests : IClassFixture<ForwardAgilityFactory>
         var resp = await _client.PostAsJsonAsync($"/posts/preview/{preview.Token}/access",
             new PreviewAccessRequest("Anna", "secret"));
 
-        Assert.Equal(HttpStatusCode.NotFound, resp.StatusCode);
+        // Returns 401 (not 404) to prevent token enumeration
+        Assert.Equal(HttpStatusCode.Unauthorized, resp.StatusCode);
     }
 }

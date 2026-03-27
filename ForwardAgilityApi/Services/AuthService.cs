@@ -7,7 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace ForwardAgilityApi.Services;
 
-public class AuthService(AppDbContext db, IConfiguration configuration) : IAuthService
+public class AuthService(AppDbContext db, IConfiguration configuration, ILogger<AuthService> logger) : IAuthService
 {
     public async Task<LoginResult> LoginAsync(LoginRequest request)
     {
@@ -15,10 +15,16 @@ public class AuthService(AppDbContext db, IConfiguration configuration) : IAuthS
 
         // Return same error for unknown user and wrong password to prevent user enumeration
         if (user is null)
+        {
+            logger.LogWarning("Failed login attempt for unknown username {Username}", request.Username);
             return new LoginResult(null, "Invalid username or password.", null);
+        }
 
         if (user.LockoutEnd.HasValue && user.LockoutEnd > DateTime.UtcNow)
+        {
+            logger.LogWarning("Login attempt on locked account {Username}, locked until {LockoutEnd}", user.Username, user.LockoutEnd);
             return new LoginResult(null, "Account is locked.", user.LockoutEnd);
+        }
 
         if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
         {
@@ -28,6 +34,11 @@ public class AuthService(AppDbContext db, IConfiguration configuration) : IAuthS
             {
                 var lockoutMinutes = configuration.GetValue("Security:LockoutDurationMinutes", 15);
                 user.LockoutEnd = DateTime.UtcNow.AddMinutes(lockoutMinutes);
+                logger.LogWarning("Account {Username} locked out after {Attempts} failed attempts", user.Username, user.FailedLoginAttempts);
+            }
+            else
+            {
+                logger.LogWarning("Failed login attempt for {Username} ({Attempts}/{MaxAttempts})", user.Username, user.FailedLoginAttempts, maxAttempts);
             }
             await db.SaveChangesAsync();
             return new LoginResult(null, "Invalid username or password.", null);
@@ -37,6 +48,7 @@ public class AuthService(AppDbContext db, IConfiguration configuration) : IAuthS
         user.FailedLoginAttempts = 0;
         user.LockoutEnd = null;
         await db.SaveChangesAsync();
+        logger.LogInformation("User {Username} logged in successfully", user.Username);
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Jwt:Key"]!));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

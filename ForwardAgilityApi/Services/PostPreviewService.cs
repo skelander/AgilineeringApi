@@ -19,7 +19,7 @@ public class PostPreviewService(AppDbContext db) : IPostPreviewService
             PostId = postId,
             Token = Guid.NewGuid().ToString("N"),
             Name = request.Name,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password, workFactor: 12),
             CreatedAt = DateTime.UtcNow
         };
         db.PostPreviews.Add(preview);

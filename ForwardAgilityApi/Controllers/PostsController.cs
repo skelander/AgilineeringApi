@@ -8,7 +8,7 @@ namespace ForwardAgilityApi.Controllers;
 
 [ApiController]
 [Route("posts")]
-public class PostsController(IPostsService postsService) : ControllerBase
+public class PostsController(IPostsService postsService, ILogger<PostsController> logger) : ControllerBase
 {
 
     [HttpGet]
@@ -48,6 +48,8 @@ public class PostsController(IPostsService postsService) : ControllerBase
             return Unauthorized(new { error = "Invalid token." });
 
         var result = await postsService.CreateAsync(request, authorId);
+        if (result.Status == ServiceResultStatus.Ok)
+            logger.LogInformation("Admin {UserId} created post {Slug}", authorId, result.Value!.Slug);
         return result.Status switch
         {
             ServiceResultStatus.Ok => CreatedAtAction(nameof(GetBySlug), new { slug = result.Value!.Slug }, result.Value),
@@ -66,6 +68,8 @@ public class PostsController(IPostsService postsService) : ControllerBase
         if (validation is not null) return validation;
 
         var result = await postsService.UpdateAsync(id, request);
+        if (result.Status == ServiceResultStatus.Ok)
+            logger.LogInformation("Admin {User} updated post {PostId}", User.Identity?.Name, id);
         return result.Status switch
         {
             ServiceResultStatus.Ok => Ok(result.Value),
@@ -82,6 +86,8 @@ public class PostsController(IPostsService postsService) : ControllerBase
     public async Task<IActionResult> Delete(int id)
     {
         var result = await postsService.DeleteAsync(id);
+        if (result.Status == ServiceResultStatus.Ok)
+            logger.LogInformation("Admin {User} deleted post {PostId}", User.Identity?.Name, id);
         return result.Status switch
         {
             ServiceResultStatus.Ok => NoContent(),

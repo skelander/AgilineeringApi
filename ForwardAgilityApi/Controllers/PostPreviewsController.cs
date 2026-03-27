@@ -74,8 +74,10 @@ public class PostPreviewAccessController(IPostPreviewService previewService) : C
         return result.Status switch
         {
             ServiceResultStatus.Ok => Ok(result.Value),
-            ServiceResultStatus.NotFound => NotFound(new { error = result.Error }),
-            ServiceResultStatus.Forbidden => Unauthorized(new { error = "Invalid credentials." }),
+            // Return the same 401 for both missing token and wrong credentials
+            // to prevent token enumeration via status code differences
+            ServiceResultStatus.NotFound or ServiceResultStatus.Forbidden =>
+                Unauthorized(new { error = "Invalid token or credentials." }),
             _ => StatusCode(500)
         };
     }
