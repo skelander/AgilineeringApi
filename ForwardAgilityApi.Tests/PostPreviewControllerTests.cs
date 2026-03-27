@@ -167,6 +167,20 @@ public class PostPreviewControllerTests : IClassFixture<ForwardAgilityFactory>
         Assert.Equal(HttpStatusCode.NotFound, resp.StatusCode);
     }
 
+    [Theory]
+    [InlineData("", "secret")]
+    [InlineData("Anna", "")]
+    [InlineData("   ", "secret")]
+    public async Task Access_EmptyCredentials_Returns400(string name, string password)
+    {
+        _client.DefaultRequestHeaders.Authorization = null;
+
+        var resp = await _client.PostAsJsonAsync("/posts/preview/sometoken/access",
+            new PreviewAccessRequest(name, password));
+
+        Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
+    }
+
     // --- Get previews ---
 
     [Fact]
@@ -227,6 +241,23 @@ public class PostPreviewControllerTests : IClassFixture<ForwardAgilityFactory>
         await _client.AuthenticateAsync();
 
         var resp = await _client.DeleteAsync("/posts/1/previews/99999");
+
+        Assert.Equal(HttpStatusCode.NotFound, resp.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeletePost_CascadesPreviewDeletion()
+    {
+        var post = await CreateDraftAsync("cascade-delete-post");
+        var createResp = await _client.PostAsJsonAsync($"/posts/{post.Id}/previews",
+            new CreatePreviewRequest("Anna", "secret"));
+        var preview = await createResp.Content.ReadFromJsonAsync<PreviewResponse>();
+
+        await _client.DeleteAsync($"/posts/{post.Id}");
+        _client.DefaultRequestHeaders.Authorization = null;
+
+        var resp = await _client.PostAsJsonAsync($"/posts/preview/{preview!.Token}/access",
+            new PreviewAccessRequest("Anna", "secret"));
 
         Assert.Equal(HttpStatusCode.NotFound, resp.StatusCode);
     }

@@ -15,6 +15,8 @@ public class PostPreviewsController(IPostPreviewService previewService) : Contro
     {
         if (string.IsNullOrWhiteSpace(request.Name))
             return BadRequest(new { error = "Name is required." });
+        if (request.Name.Length > 200)
+            return BadRequest(new { error = "Name must be 200 characters or fewer." });
         if (string.IsNullOrWhiteSpace(request.Password))
             return BadRequest(new { error = "Password is required." });
 
