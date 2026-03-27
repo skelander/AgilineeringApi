@@ -26,6 +26,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IPostsService, PostsService>();
 builder.Services.AddScoped<ITagsService, TagsService>();
+builder.Services.AddScoped<IPostPreviewService, PostPreviewService>();
 
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException("Jwt:Key is not configured.");
@@ -121,6 +122,20 @@ static void ApplySchemaChanges(AppDbContext db, ILogger logger)
     // Any other exception is logged as a warning (app continues but schema may be inconsistent).
     TryAlterTable(db, logger, "ALTER TABLE Users ADD COLUMN FailedLoginAttempts INTEGER NOT NULL DEFAULT 0");
     TryAlterTable(db, logger, "ALTER TABLE Users ADD COLUMN LockoutEnd TEXT NULL");
+
+    // PostPreviews table — added after initial release
+    db.Database.ExecuteSqlRaw("""
+        CREATE TABLE IF NOT EXISTS PostPreviews (
+            Id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+            PostId INTEGER NOT NULL REFERENCES Posts(Id) ON DELETE CASCADE,
+            Token TEXT NOT NULL,
+            Name TEXT NOT NULL,
+            PasswordHash TEXT NOT NULL,
+            CreatedAt TEXT NOT NULL
+        )
+        """);
+    db.Database.ExecuteSqlRaw("CREATE UNIQUE INDEX IF NOT EXISTS IX_PostPreviews_Token ON PostPreviews(Token)");
+    db.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS IX_PostPreviews_PostId ON PostPreviews(PostId)");
 
     // WAL mode — allows concurrent reads during writes (persistent, no-op on :memory:)
     db.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL");

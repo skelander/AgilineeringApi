@@ -8,6 +8,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<User> Users => Set<User>();
     public DbSet<Post> Posts => Set<Post>();
     public DbSet<Tag> Tags => Set<Tag>();
+    public DbSet<PostPreview> PostPreviews => Set<PostPreview>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -44,5 +45,18 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .HasMany(p => p.Tags)
             .WithMany(t => t.Posts)
             .UsingEntity("PostTag");
+
+        modelBuilder.Entity<PostPreview>(entity =>
+        {
+            entity.HasIndex(pp => pp.Token).IsUnique();
+            entity.HasIndex(pp => pp.PostId);
+            entity.Property(pp => pp.Token).HasMaxLength(32);
+            entity.Property(pp => pp.Name).HasMaxLength(200);
+            entity.Property(pp => pp.PasswordHash).HasMaxLength(128);
+            entity.HasOne(pp => pp.Post)
+                .WithMany()
+                .HasForeignKey(pp => pp.PostId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
     }
 }

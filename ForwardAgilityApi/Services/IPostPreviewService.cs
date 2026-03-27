@@ -1,0 +1,13 @@
+namespace ForwardAgilityApi.Services;
+
+public record CreatePreviewRequest(string Name, string Password);
+public record PreviewResponse(int Id, string Token, string Name, DateTime CreatedAt);
+public record PreviewAccessRequest(string Name, string Password);
+
+public interface IPostPreviewService
+{
+    Task<ServiceResult<PreviewResponse>> CreateAsync(int postId, CreatePreviewRequest request);
+    Task<ServiceResult<List<PreviewResponse>>> GetByPostAsync(int postId);
+    Task<ServiceResult<PostDetailResponse>> AccessAsync(string token, PreviewAccessRequest request);
+    Task<ServiceResult> DeleteAsync(int postId, int previewId);
+}
