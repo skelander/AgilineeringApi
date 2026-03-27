@@ -78,6 +78,7 @@ public class PostsController(IPostsService postsService) : ControllerBase
 
     [HttpDelete("{id:int}")]
     [Authorize(Roles = "admin")]
+    [EnableRateLimiting("write")]
     public async Task<IActionResult> Delete(int id)
     {
         var result = await postsService.DeleteAsync(id);

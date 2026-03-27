@@ -19,6 +19,8 @@ public class PostPreviewsController(IPostPreviewService previewService) : Contro
             return BadRequest(new { error = "Name must be 200 characters or fewer." });
         if (string.IsNullOrWhiteSpace(request.Password))
             return BadRequest(new { error = "Password is required." });
+        if (request.Password.Length < 6)
+            return BadRequest(new { error = "Password must be at least 6 characters." });
 
         var result = await previewService.CreateAsync(postId, request);
         return result.Status switch

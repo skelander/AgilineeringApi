@@ -81,6 +81,7 @@ public class PostPreviewControllerTests : IClassFixture<ForwardAgilityFactory>
     [InlineData("", "secret")]
     [InlineData("Anna", "")]
     [InlineData("   ", "secret")]
+    [InlineData("Anna", "abc")]   // password too short (< 6 chars)
     public async Task Create_InvalidInput_Returns400(string name, string password)
     {
         var post = await CreateDraftAsync("create-preview-invalid");
@@ -187,8 +188,8 @@ public class PostPreviewControllerTests : IClassFixture<ForwardAgilityFactory>
     public async Task GetByPost_AsAdmin_ReturnsList()
     {
         var post = await CreateDraftAsync("get-previews-draft");
-        await _client.PostAsJsonAsync($"/posts/{post.Id}/previews", new CreatePreviewRequest("A", "pw"));
-        await _client.PostAsJsonAsync($"/posts/{post.Id}/previews", new CreatePreviewRequest("B", "pw"));
+        await _client.PostAsJsonAsync($"/posts/{post.Id}/previews", new CreatePreviewRequest("A", "secret"));
+        await _client.PostAsJsonAsync($"/posts/{post.Id}/previews", new CreatePreviewRequest("B", "secret"));
 
         var resp = await _client.GetAsync($"/posts/{post.Id}/previews");
 
