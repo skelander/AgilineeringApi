@@ -37,6 +37,14 @@ public class PostPreviewsController(IPostPreviewService previewService) : Contro
 [Route("posts/preview")]
 public class PostPreviewAccessController(IPostPreviewService previewService) : ControllerBase
 {
+    [HttpGet("{token}")]
+    [EnableRateLimiting("login")]
+    public async Task<IActionResult> Check(string token)
+    {
+        var exists = await previewService.TokenExistsAsync(token);
+        return exists ? Ok() : NotFound(new { error = "This preview link is no longer valid." });
+    }
+
     [HttpPost("{token}/access")]
     [EnableRateLimiting("login")]
     public async Task<IActionResult> Access(string token, [FromBody] PreviewAccessRequest request)

@@ -92,6 +92,46 @@ public class PostPreviewControllerTests : IClassFixture<ForwardAgilityFactory>
         Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
     }
 
+    // --- Check token existence ---
+
+    [Fact]
+    public async Task Check_ExistingToken_Returns200()
+    {
+        var post = await CreateDraftAsync("check-token-exists");
+        var createResp = await _client.PostAsJsonAsync($"/posts/{post.Id}/previews",
+            new CreatePreviewRequest("Anna", "secret"));
+        var preview = await createResp.Content.ReadFromJsonAsync<PreviewResponse>();
+        _client.DefaultRequestHeaders.Authorization = null;
+
+        var resp = await _client.GetAsync($"/posts/preview/{preview!.Token}");
+
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+    }
+
+    [Fact]
+    public async Task Check_NonExistentToken_Returns404()
+    {
+        var resp = await _client.GetAsync("/posts/preview/doesnotexist");
+
+        Assert.Equal(HttpStatusCode.NotFound, resp.StatusCode);
+    }
+
+    [Fact]
+    public async Task Check_AfterPostDeleted_Returns404()
+    {
+        var post = await CreateDraftAsync("check-token-after-delete");
+        var createResp = await _client.PostAsJsonAsync($"/posts/{post.Id}/previews",
+            new CreatePreviewRequest("Anna", "secret"));
+        var preview = await createResp.Content.ReadFromJsonAsync<PreviewResponse>();
+
+        await _client.DeleteAsync($"/posts/{post.Id}");
+        _client.DefaultRequestHeaders.Authorization = null;
+
+        var resp = await _client.GetAsync($"/posts/preview/{preview!.Token}");
+
+        Assert.Equal(HttpStatusCode.NotFound, resp.StatusCode);
+    }
+
     // --- Access preview ---
 
     [Fact]

@@ -7,5 +7,6 @@ public record PreviewAccessRequest(string Name, string Password);
 public interface IPostPreviewService
 {
     Task<ServiceResult<PreviewResponse>> CreateAsync(int postId, CreatePreviewRequest request);
+    Task<bool> TokenExistsAsync(string token);
     Task<ServiceResult<PostDetailResponse>> AccessAsync(string token, PreviewAccessRequest request);
 }

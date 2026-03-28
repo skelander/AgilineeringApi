@@ -27,6 +27,9 @@ public class PostPreviewService(AppDbContext db) : IPostPreviewService
         return ServiceResult<PreviewResponse>.Ok(ToResponse(preview));
     }
 
+    public async Task<bool> TokenExistsAsync(string token) =>
+        await db.PostPreviews.AnyAsync(pp => pp.Token == token);
+
     public async Task<ServiceResult<PostDetailResponse>> AccessAsync(string token, PreviewAccessRequest request)
     {
         var preview = await db.PostPreviews
