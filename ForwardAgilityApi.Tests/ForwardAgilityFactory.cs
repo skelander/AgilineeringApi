@@ -40,6 +40,13 @@ public class ForwardAgilityFactory : WebApplicationFactory<Program>
         builder.UseSetting("Security:MaxFailedLoginAttempts", "3");
         builder.UseSetting("Security:LockoutDurationMinutes", "15");
         builder.UseSetting("Storage:ImagesPath", _imagesDir);
+        builder.UseSetting("AdminKey", "test-admin-key");
+    }
+
+    protected override void ConfigureClient(HttpClient client)
+    {
+        base.ConfigureClient(client);
+        client.DefaultRequestHeaders.Add("X-Admin-Key", "test-admin-key");
     }
 
     protected override void Dispose(bool disposing)

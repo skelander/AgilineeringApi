@@ -100,6 +100,28 @@ app.Use(async (context, next) =>
 
 app.UseCors();
 
+app.Use(async (context, next) =>
+{
+    if (IsWriteMethod(context.Request.Method) && !IsPublicWriteEndpoint(context.Request))
+    {
+        var configuredKey = app.Configuration["AdminKey"];
+        if (string.IsNullOrEmpty(configuredKey))
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            await context.Response.WriteAsJsonAsync(new { error = "Write access is not available." });
+            return;
+        }
+        var providedKey = context.Request.Headers["X-Admin-Key"].FirstOrDefault();
+        if (providedKey != configuredKey)
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            await context.Response.WriteAsJsonAsync(new { error = "Write access is not available." });
+            return;
+        }
+    }
+    await next();
+});
+
 var imagesPath = app.Configuration["Storage:ImagesPath"] ?? "images";
 var imagesDir = Path.IsPathRooted(imagesPath)
     ? imagesPath
@@ -177,6 +199,16 @@ static void TryAlterTable(AppDbContext db, ILogger logger, string sql)
     {
         logger.LogWarning(ex, "Unexpected error running schema change: {Sql}", sql);
     }
+}
+
+static bool IsWriteMethod(string method) =>
+    HttpMethods.IsPost(method) || HttpMethods.IsPut(method) || HttpMethods.IsDelete(method);
+
+static bool IsPublicWriteEndpoint(HttpRequest request)
+{
+    var path = request.Path.Value ?? "";
+    return path.Contains("/preview/", StringComparison.OrdinalIgnoreCase)
+        && path.EndsWith("/access", StringComparison.OrdinalIgnoreCase);
 }
 
 public partial class Program { }
