@@ -25,7 +25,7 @@ public class TagsController(ITagsService tagsService) : ControllerBase
         var result = await tagsService.CreateAsync(request);
         return result.Status switch
         {
-            ServiceResultStatus.Ok => Created($"/tags/{result.Value!.Id}", result.Value),
+            ServiceResultStatus.Ok => StatusCode(201, result.Value),
             ServiceResultStatus.Conflict => Conflict(new { error = result.Error }),
             _ => StatusCode(500)
         };

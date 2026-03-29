@@ -25,7 +25,7 @@ public class PostPreviewsController(IPostPreviewService previewService) : Contro
         var result = await previewService.CreateAsync(postId, request);
         return result.Status switch
         {
-            ServiceResultStatus.Ok => Ok(result.Value),
+            ServiceResultStatus.Ok => StatusCode(201, result.Value),
             ServiceResultStatus.NotFound => NotFound(new { error = result.Error }),
             ServiceResultStatus.BadRequest => BadRequest(new { error = result.Error }),
             _ => StatusCode(500)

@@ -32,7 +32,7 @@ public class PostPreviewControllerTests : IClassFixture<ForwardAgilityFactory>
         var resp = await _client.PostAsJsonAsync($"/posts/{post.Id}/previews",
             new CreatePreviewRequest("Anna", "secret"));
 
-        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, resp.StatusCode);
         var preview = await resp.Content.ReadFromJsonAsync<PreviewResponse>();
         Assert.NotNull(preview);
         Assert.Equal("Anna", preview!.Name);

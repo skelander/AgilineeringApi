@@ -57,5 +57,6 @@ The following items were identified during a security audit and consciously acce
 **Mitigation:**
 - Preview links are password-protected (minimum 6 characters, BCrypt work factor 12).
 - The access endpoint is rate-limited (10 req/min per IP).
-- Access to nonexistent and wrong-credential tokens returns the same 401 to prevent enumeration.
+- The access endpoint (`POST /posts/preview/{token}/access`) returns the same 401 for both missing tokens and wrong credentials to prevent enumeration.
+- The existence-check endpoint (`GET /posts/preview/{token}`) does reveal whether a token is valid (returns 200 vs 404). This is an intentional UX tradeoff to show a clear error page before the user attempts to log in. The token space is 128 bits (GUID N format), making enumeration infeasible in practice. The endpoint is also rate-limited.
 - Admins can revoke access by deleting the post (cascades to all its previews).
