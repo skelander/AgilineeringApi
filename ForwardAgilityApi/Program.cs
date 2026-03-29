@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.RateLimiting;
 using ForwardAgilityApi.Data;
@@ -111,8 +112,10 @@ app.Use(async (context, next) =>
             await context.Response.WriteAsJsonAsync(new { error = "Write access is not available." });
             return;
         }
-        var providedKey = context.Request.Headers["X-Admin-Key"].FirstOrDefault();
-        if (providedKey != configuredKey)
+        var providedKey = context.Request.Headers["X-Admin-Key"].FirstOrDefault() ?? "";
+        var configuredHash = SHA256.HashData(Encoding.UTF8.GetBytes(configuredKey));
+        var providedHash = SHA256.HashData(Encoding.UTF8.GetBytes(providedKey));
+        if (!CryptographicOperations.FixedTimeEquals(configuredHash, providedHash))
         {
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
             await context.Response.WriteAsJsonAsync(new { error = "Write access is not available." });
