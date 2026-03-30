@@ -1,4 +1,0 @@
-<Solution>
-  <Project Path="ForwardAgilityApi.Tests/ForwardAgilityApi.Tests.csproj" />
-  <Project Path="ForwardAgilityApi/ForwardAgilityApi.csproj" />
-</Solution>

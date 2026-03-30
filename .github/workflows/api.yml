@@ -4,8 +4,8 @@ on:
   push:
     branches: [main]
     paths:
-      - 'ForwardAgilityApi/**'
-      - 'ForwardAgilityApi.Tests/**'
+      - 'AgilineeringApi/**'
+      - 'AgilineeringApi.Tests/**'
       - 'Dockerfile'
       - 'fly.toml'
       - '.github/workflows/api.yml'
@@ -25,17 +25,17 @@ jobs:
           dotnet-version: '10.0.103'
 
       - name: Restore
-        run: dotnet restore ForwardAgilityApi.Tests/ForwardAgilityApi.Tests.csproj
+        run: dotnet restore AgilineeringApi.Tests/AgilineeringApi.Tests.csproj
 
       - name: Build
-        run: dotnet build ForwardAgilityApi.Tests/ForwardAgilityApi.Tests.csproj --no-restore
+        run: dotnet build AgilineeringApi.Tests/AgilineeringApi.Tests.csproj --no-restore
 
       - name: Test
-        run: dotnet test ForwardAgilityApi.Tests/ForwardAgilityApi.Tests.csproj --no-build
+        run: dotnet test AgilineeringApi.Tests/AgilineeringApi.Tests.csproj --no-build
         env:
           Jwt__Key: ${{ secrets.JWT_KEY }}
-          Jwt__Issuer: ForwardAgilityApi
-          Jwt__Audience: ForwardAgilityApi
+          Jwt__Issuer: AgilineeringApi
+          Jwt__Audience: AgilineeringApi
 
       - name: Deploy to Fly.io
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'

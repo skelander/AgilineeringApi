@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="AgilineeringApi.Tests/AgilineeringApi.Tests.csproj" />
+  <Project Path="AgilineeringApi/AgilineeringApi.csproj" />
+</Solution>

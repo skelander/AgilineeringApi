@@ -1,4 +1,4 @@
-# ForwardAgilityApi
+# AgilineeringApi
 
 ASP.NET Core .NET 10 REST API — blogg med inlägg, taggar och JWT-autentisering.
 
@@ -11,15 +11,15 @@ ASP.NET Core .NET 10 REST API — blogg med inlägg, taggar och JWT-autentiserin
 
 ## Projektstruktur
 ```
-ForwardAgilityApi/
+AgilineeringApi/
   Controllers/   AuthController, PostsController, TagsController
   Services/      IAuthService, IPostsService, ITagsService + impl, ServiceResult<T>
   Models/        User, Post, Tag
   Data/          AppDbContext
   Program.cs
 
-ForwardAgilityApi.Tests/
-  ForwardAgilityFactory.cs   WebApplicationFactory med SQLite :memory:
+AgilineeringApi.Tests/
+  AgilineeringFactory.cs   WebApplicationFactory med SQLite :memory:
   AuthControllerTests.cs
   AuthLockoutTests.cs / AuthResetTests.cs
   PostsControllerTests.cs
@@ -53,11 +53,11 @@ ForwardAgilityApi.Tests/
 - Tester som muterar user-state (lockout) ligger i **separata klasser med egen fixture**
 
 ## Kommandon
-- Testa: `& 'C:\Program Files\dotnet\dotnet.exe' test 'C:\Users\Rikard\ForwardAgilityApi\ForwardAgilityApi.Tests\ForwardAgilityApi.Tests.csproj'`
+- Testa: `& 'C:\Program Files\dotnet\dotnet.exe' test 'C:\Users\Rikard\AgilineeringApi\AgilineeringApi.Tests\AgilineeringApi.Tests.csproj'`
 - Deploy: push till main → GitHub Actions bygger och deployar till Fly.io
 
 ## Infrastruktur
-- GitHub repo: https://github.com/skelander/ForwardAgilityApi
+- GitHub repo: https://github.com/skelander/AgilineeringApi
 - API: https://forwardagility-rikard.fly.dev
 - SQLite-volym: `forwardagility_data` på `/data/forwardagility.db`
 - Seedade användare: `admin` / `admin` (admin-roll)
@@ -71,7 +71,7 @@ Dessa regler gäller **alltid** — vid ny kod, ändringar och kodgranskning.
 ## 1. Tester
 
 ### Integrationstester (obligatoriskt)
-- Varje ny endpoint **måste** ha integrationstester i `ForwardAgilityApi.Tests`
+- Varje ny endpoint **måste** ha integrationstester i `AgilineeringApi.Tests`
 - Täck lyckligt flöde + felflöden (401, 403, 404, 409 etc.)
 - Tester ska verifiera **beteende**, inte implementation
 - Testnamn: `Metod_Scenario_FörväntatResultat` (t.ex. `Login_AfterMaxFailedAttempts_ReturnsLocked`)

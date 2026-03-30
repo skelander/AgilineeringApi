@@ -9,7 +9,7 @@ obj/
 *.db-wal
 
 ## Uploaded images (stored on Fly.io volume, not in git)
-ForwardAgilityApi/images/
+AgilineeringApi/images/
 
 ## Secrets
 appsettings.*.json
