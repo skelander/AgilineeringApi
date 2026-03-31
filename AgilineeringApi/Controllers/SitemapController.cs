@@ -17,7 +17,9 @@ public class SitemapController(IPostsService postsService, IConfiguration config
         sb.AppendLine("<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">");
         foreach (var post in result.Items)
         {
-            sb.AppendLine($"  <url><loc>{baseUrl}/#/post/{post.Slug}</loc></url>");
+            var escapedSlug = System.Security.SecurityElement.Escape(post.Slug);
+            var escapedBase = System.Security.SecurityElement.Escape(baseUrl);
+            sb.AppendLine($"  <url><loc>{escapedBase}/#/post/{escapedSlug}</loc></url>");
         }
         sb.AppendLine("</urlset>");
 
