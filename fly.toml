@@ -44,3 +44,4 @@ primary_region = "arn"
   memory = "256mb"
   cpu_kind = "shared"
   cpus = 1
+
