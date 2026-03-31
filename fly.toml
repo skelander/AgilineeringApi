@@ -45,3 +45,4 @@ primary_region = "arn"
   cpu_kind = "shared"
   cpus = 1
 
+
