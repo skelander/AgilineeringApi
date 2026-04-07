@@ -8,7 +8,8 @@ primary_region = "arn"
   ConnectionStrings__DefaultConnection = "Data Source=/data/agilineering.db"
   Storage__ImagesPath = "/data/images"
   Cors__Origins__0 = "https://skelander.github.io"
-  Site__BaseUrl = "https://skelander.github.io/Agilineering"
+  Cors__Origins__1 = "https://agilineering.com"
+  Site__BaseUrl = "https://agilineering.com"
 
 [[mounts]]
   source = "agilineering_data"
