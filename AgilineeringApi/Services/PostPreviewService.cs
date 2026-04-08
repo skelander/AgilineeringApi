@@ -54,6 +54,47 @@ public class PostPreviewService(AppDbContext db) : IPostPreviewService
             post.Tags.Select(t => new TagResponse(t.Id, t.Name, t.Slug))));
     }
 
+    public async Task<ServiceResult<CommentResponse>> AddCommentAsync(string token, CreateCommentRequest request)
+    {
+        var preview = await db.PostPreviews.FirstOrDefaultAsync(pp => pp.Token == token);
+        if (preview is null)
+            return ServiceResult<CommentResponse>.NotFound("Preview not found.");
+
+        var nameMatch = string.Equals(preview.Name, request.Name, StringComparison.OrdinalIgnoreCase);
+        var passwordMatch = BCrypt.Net.BCrypt.Verify(request.Password, preview.PasswordHash);
+        if (!nameMatch || !passwordMatch)
+            return ServiceResult<CommentResponse>.Forbidden("Invalid credentials.");
+
+        var comment = new PreviewComment
+        {
+            PreviewId = preview.Id,
+            Body = request.Body,
+            CreatedAt = DateTime.UtcNow
+        };
+        db.PreviewComments.Add(comment);
+        await db.SaveChangesAsync();
+        return ServiceResult<CommentResponse>.Ok(new CommentResponse(comment.Id, comment.Body, comment.CreatedAt));
+    }
+
+    public async Task<ServiceResult<IEnumerable<CommentResponse>>> GetCommentsAsync(string token, PreviewAccessRequest request)
+    {
+        var preview = await db.PostPreviews.FirstOrDefaultAsync(pp => pp.Token == token);
+        if (preview is null)
+            return ServiceResult<IEnumerable<CommentResponse>>.NotFound("Preview not found.");
+
+        var nameMatch = string.Equals(preview.Name, request.Name, StringComparison.OrdinalIgnoreCase);
+        var passwordMatch = BCrypt.Net.BCrypt.Verify(request.Password, preview.PasswordHash);
+        if (!nameMatch || !passwordMatch)
+            return ServiceResult<IEnumerable<CommentResponse>>.Forbidden("Invalid credentials.");
+
+        var comments = await db.PreviewComments
+            .Where(c => c.PreviewId == preview.Id)
+            .OrderBy(c => c.CreatedAt)
+            .Select(c => new CommentResponse(c.Id, c.Body, c.CreatedAt))
+            .ToListAsync();
+        return ServiceResult<IEnumerable<CommentResponse>>.Ok(comments);
+    }
+
     private static PreviewResponse ToResponse(PostPreview pp) =>
         new(pp.Id, pp.Token, pp.Name, pp.CreatedAt);
 }

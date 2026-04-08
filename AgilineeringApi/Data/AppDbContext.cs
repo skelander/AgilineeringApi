@@ -9,6 +9,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Post> Posts => Set<Post>();
     public DbSet<Tag> Tags => Set<Tag>();
     public DbSet<PostPreview> PostPreviews => Set<PostPreview>();
+    public DbSet<PreviewComment> PreviewComments => Set<PreviewComment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -45,6 +46,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .HasMany(p => p.Tags)
             .WithMany(t => t.Posts)
             .UsingEntity("PostTag");
+
+        modelBuilder.Entity<PreviewComment>(entity =>
+        {
+            entity.HasIndex(c => c.PreviewId);
+            entity.Property(c => c.Body).HasMaxLength(5000);
+            entity.HasOne(c => c.Preview)
+                .WithMany()
+                .HasForeignKey(c => c.PreviewId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
 
         modelBuilder.Entity<PostPreview>(entity =>
         {

@@ -63,4 +63,41 @@ public class PostPreviewAccessController(IPostPreviewService previewService) : C
             _ => StatusCode(500)
         };
     }
+
+    [HttpGet("{token}/comments")]
+    public async Task<IActionResult> GetComments(string token, [FromQuery] string name, [FromQuery] string password)
+    {
+        if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(password))
+            return BadRequest(new { error = "Name and password are required." });
+
+        var result = await previewService.GetCommentsAsync(token, new PreviewAccessRequest(name, password));
+        return result.Status switch
+        {
+            ServiceResultStatus.Ok => Ok(result.Value),
+            ServiceResultStatus.NotFound or ServiceResultStatus.Forbidden =>
+                Unauthorized(new { error = "Invalid token or credentials." }),
+            _ => StatusCode(500)
+        };
+    }
+
+    [HttpPost("{token}/comments")]
+    [EnableRateLimiting("write")]
+    public async Task<IActionResult> AddComment(string token, [FromBody] CreateCommentRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Password))
+            return BadRequest(new { error = "Name and password are required." });
+        if (string.IsNullOrWhiteSpace(request.Body))
+            return BadRequest(new { error = "Comment body is required." });
+        if (request.Body.Length > 5000)
+            return BadRequest(new { error = "Comment must be 5000 characters or fewer." });
+
+        var result = await previewService.AddCommentAsync(token, request);
+        return result.Status switch
+        {
+            ServiceResultStatus.Ok => StatusCode(201, result.Value),
+            ServiceResultStatus.NotFound or ServiceResultStatus.Forbidden =>
+                Unauthorized(new { error = "Invalid token or credentials." }),
+            _ => StatusCode(500)
+        };
+    }
 }

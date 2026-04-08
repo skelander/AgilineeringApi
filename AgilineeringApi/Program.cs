@@ -165,6 +165,17 @@ static void ApplySchemaChanges(AppDbContext db, ILogger logger)
     db.Database.ExecuteSqlRaw("CREATE UNIQUE INDEX IF NOT EXISTS IX_PostPreviews_Token ON PostPreviews(Token)");
     db.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS IX_PostPreviews_PostId ON PostPreviews(PostId)");
 
+    // PreviewComments table — added after initial release
+    db.Database.ExecuteSqlRaw("""
+        CREATE TABLE IF NOT EXISTS PreviewComments (
+            Id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+            PreviewId INTEGER NOT NULL REFERENCES PostPreviews(Id) ON DELETE CASCADE,
+            Body TEXT NOT NULL,
+            CreatedAt TEXT NOT NULL
+        )
+        """);
+    db.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS IX_PreviewComments_PreviewId ON PreviewComments(PreviewId)");
+
     // WAL mode — allows concurrent reads during writes (persistent, no-op on :memory:)
     db.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL");
 
@@ -211,8 +222,10 @@ static bool IsPublicWriteEndpoint(HttpRequest request)
 {
     var path = request.Path.Value ?? "";
     if (path.Equals("/auth/login", StringComparison.OrdinalIgnoreCase)) return true;
-    return path.Contains("/preview/", StringComparison.OrdinalIgnoreCase)
-        && path.EndsWith("/access", StringComparison.OrdinalIgnoreCase);
+    if (path.Contains("/preview/", StringComparison.OrdinalIgnoreCase) &&
+        (path.EndsWith("/access", StringComparison.OrdinalIgnoreCase) ||
+         path.EndsWith("/comments", StringComparison.OrdinalIgnoreCase))) return true;
+    return false;
 }
 
 public partial class Program { }
