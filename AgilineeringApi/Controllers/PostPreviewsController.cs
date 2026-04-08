@@ -65,6 +65,7 @@ public class PostPreviewAccessController(IPostPreviewService previewService) : C
     }
 
     [HttpPost("{token}/comments/list")]
+    [EnableRateLimiting("login")]
     public async Task<IActionResult> GetComments(string token, [FromBody] PreviewAccessRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Password))
