@@ -85,7 +85,7 @@ using (var scope = app.Services.CreateScope())
     var startupLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     db.Database.EnsureCreated();
     ApplySchemaChanges(db, startupLogger);
-    await SeedDataAsync(db);
+    await SeedDataAsync(db, app.Configuration, startupLogger);
 }
 
 app.Use(async (context, next) =>
@@ -185,14 +185,32 @@ static void ApplySchemaChanges(AppDbContext db, ILogger logger)
     db.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS IX_PostTag_TagsId ON PostTag(TagsId)");
 }
 
-static async Task SeedDataAsync(AppDbContext db)
+static async Task SeedDataAsync(AppDbContext db, IConfiguration configuration, ILogger logger)
 {
     if (!await db.Users.AnyAsync())
     {
+        var configuredPassword = configuration["Seed:AdminPassword"];
+        string password;
+
+        if (!string.IsNullOrWhiteSpace(configuredPassword))
+        {
+            password = configuredPassword;
+            logger.LogInformation("Seeding admin account using configured Seed:AdminPassword.");
+        }
+        else
+        {
+            password = Convert.ToBase64String(RandomNumberGenerator.GetBytes(18));
+            logger.LogWarning(
+                "No Seed:AdminPassword configured. A random admin password has been generated: {Password} — " +
+                "save this now, it will not be shown again. " +
+                "Set Seed:AdminPassword in your secrets to control this on the next fresh database.",
+                password);
+        }
+
         db.Users.Add(new User
         {
             Username = "admin",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin", workFactor: 12),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(password, workFactor: 12),
             Role = "admin"
         });
         await db.SaveChangesAsync();

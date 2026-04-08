@@ -41,6 +41,7 @@ public class AgilineeringFactory : WebApplicationFactory<Program>
         builder.UseSetting("Security:LockoutDurationMinutes", "15");
         builder.UseSetting("Storage:ImagesPath", _imagesDir);
         builder.UseSetting("AdminKey", "test-admin-key");
+        builder.UseSetting("Seed:AdminPassword", "admin");
     }
 
     protected override void ConfigureClient(HttpClient client)

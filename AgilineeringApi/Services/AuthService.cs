@@ -67,4 +67,19 @@ public class AuthService(AppDbContext db, IConfiguration configuration, ILogger<
 
         return new LoginResult(new LoginResponse(new JwtSecurityTokenHandler().WriteToken(token), user.Role), null, null);
     }
+
+    public async Task<ServiceResult> ChangePasswordAsync(int userId, ChangePasswordRequest request)
+    {
+        var user = await db.Users.FindAsync(userId);
+        if (user is null)
+            return ServiceResult.NotFound("User not found.");
+
+        if (!BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.PasswordHash))
+            return ServiceResult.Forbidden("Current password is incorrect.");
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword, workFactor: 12);
+        await db.SaveChangesAsync();
+        logger.LogInformation("User {Username} changed their password", user.Username);
+        return ServiceResult.Ok();
+    }
 }
