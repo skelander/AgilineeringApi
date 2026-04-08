@@ -49,6 +49,8 @@ public class PostPreviewService(AppDbContext db, ILogger<PostPreviewService> log
 
         logger.LogInformation("Preview accessed for token {Token} by {Name}", token, request.Name);
         var post = preview.Post;
+        if (post is null)
+            return ServiceResult<PostDetailResponse>.NotFound("The post associated with this preview no longer exists.");
         return ServiceResult<PostDetailResponse>.Ok(new PostDetailResponse(
             post.Id, post.Title, post.Content, post.Slug, post.Published,
             post.CreatedAt, post.UpdatedAt, post.Author.Username,

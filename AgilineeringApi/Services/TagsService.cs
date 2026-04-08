@@ -1,4 +1,5 @@
 using AgilineeringApi.Data;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace AgilineeringApi.Services;
@@ -23,7 +24,14 @@ public class TagsService(AppDbContext db) : ITagsService
 
         var tag = new Models.Tag { Name = request.Name, Slug = request.Slug };
         db.Tags.Add(tag);
-        await db.SaveChangesAsync();
+        try
+        {
+            await db.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is SqliteException { SqliteErrorCode: 19 })
+        {
+            return ServiceResult<TagResponse>.Conflict($"Tag with slug '{request.Slug}' or name '{request.Name}' already exists.");
+        }
         return ServiceResult<TagResponse>.Ok(new TagResponse(tag.Id, tag.Name, tag.Slug));
     }
 

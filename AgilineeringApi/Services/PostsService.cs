@@ -1,5 +1,6 @@
 using AgilineeringApi.Data;
 using AgilineeringApi.Models;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace AgilineeringApi.Services;
@@ -77,7 +78,14 @@ public class PostsService(AppDbContext db) : IPostsService
             Tags = tags
         };
         db.Posts.Add(post);
-        await db.SaveChangesAsync();
+        try
+        {
+            await db.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is SqliteException { SqliteErrorCode: 19 })
+        {
+            return ServiceResult<PostDetailResponse>.Conflict($"Post with slug '{request.Slug}' already exists.");
+        }
         return ServiceResult<PostDetailResponse>.Ok(ToDetail(post));
     }
 
@@ -107,7 +115,14 @@ public class PostsService(AppDbContext db) : IPostsService
 
         post.Tags = updatedTags;
 
-        await db.SaveChangesAsync();
+        try
+        {
+            await db.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is SqliteException { SqliteErrorCode: 19 })
+        {
+            return ServiceResult<PostDetailResponse>.Conflict($"Post with slug '{request.Slug}' already exists.");
+        }
         return ServiceResult<PostDetailResponse>.Ok(ToDetail(post));
     }
 
