@@ -252,9 +252,9 @@ static void TryAlterTable(AppDbContext db, ILogger logger, string sql)
     {
         db.Database.ExecuteSqlRaw(sql);
     }
-    catch (SqliteException ex) when (ex.Message.Contains("duplicate column name"))
+    catch (SqliteException ex) when (ex.SqliteErrorCode == 1 && ex.Message.Contains("duplicate column name"))
     {
-        // Column already exists — expected when upgrading an existing database
+        // Column already exists (SQLite error 1 = SQLITE_ERROR) — expected when upgrading an existing database
     }
     catch (Exception ex)
     {

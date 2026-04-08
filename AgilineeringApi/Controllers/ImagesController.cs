@@ -54,8 +54,9 @@ public class ImagesController(IConfiguration configuration, IWebHostEnvironment 
             await using var stream = System.IO.File.Create(fullPath);
             await file.CopyToAsync(stream);
         }
-        catch
+        catch (Exception ex)
         {
+            logger.LogError(ex, "Failed to save uploaded image {FileName}", fileName);
             System.IO.File.Delete(fullPath);
             throw;
         }
