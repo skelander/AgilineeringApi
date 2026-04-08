@@ -58,7 +58,7 @@ public class ImagesController(IConfiguration configuration, IWebHostEnvironment 
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to save uploaded image {FileName}", fileName);
-            System.IO.File.Delete(fullPath);
+            try { System.IO.File.Delete(fullPath); } catch (Exception cleanupEx) { logger.LogWarning(cleanupEx, "Failed to clean up partial upload {FileName}", fileName); }
             throw;
         }
 
