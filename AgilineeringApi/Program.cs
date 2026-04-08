@@ -224,7 +224,8 @@ static bool IsPublicWriteEndpoint(HttpRequest request)
     if (path.Equals("/auth/login", StringComparison.OrdinalIgnoreCase)) return true;
     if (path.Contains("/preview/", StringComparison.OrdinalIgnoreCase) &&
         (path.EndsWith("/access", StringComparison.OrdinalIgnoreCase) ||
-         path.EndsWith("/comments", StringComparison.OrdinalIgnoreCase))) return true;
+         path.EndsWith("/comments", StringComparison.OrdinalIgnoreCase) ||
+         path.EndsWith("/comments/list", StringComparison.OrdinalIgnoreCase))) return true;
     return false;
 }
 

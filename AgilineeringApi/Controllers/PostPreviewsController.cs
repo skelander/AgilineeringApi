@@ -64,18 +64,18 @@ public class PostPreviewAccessController(IPostPreviewService previewService) : C
         };
     }
 
-    [HttpGet("{token}/comments")]
-    public async Task<IActionResult> GetComments(string token, [FromQuery] string name, [FromQuery] string password)
+    [HttpPost("{token}/comments/list")]
+    public async Task<IActionResult> GetComments(string token, [FromBody] PreviewAccessRequest request)
     {
-        if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(password))
+        if (string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Password))
             return BadRequest(new { error = "Name and password are required." });
 
-        var result = await previewService.GetCommentsAsync(token, new PreviewAccessRequest(name, password));
+        var result = await previewService.GetCommentsAsync(token, request);
         return result.Status switch
         {
             ServiceResultStatus.Ok => Ok(result.Value),
-            ServiceResultStatus.NotFound or ServiceResultStatus.Forbidden =>
-                Unauthorized(new { error = "Invalid token or credentials." }),
+            ServiceResultStatus.NotFound => NotFound(new { error = "This preview link is no longer valid." }),
+            ServiceResultStatus.Forbidden => Unauthorized(new { error = "Invalid credentials." }),
             _ => StatusCode(500)
         };
     }
@@ -95,8 +95,8 @@ public class PostPreviewAccessController(IPostPreviewService previewService) : C
         return result.Status switch
         {
             ServiceResultStatus.Ok => StatusCode(201, result.Value),
-            ServiceResultStatus.NotFound or ServiceResultStatus.Forbidden =>
-                Unauthorized(new { error = "Invalid token or credentials." }),
+            ServiceResultStatus.NotFound => NotFound(new { error = "This preview link is no longer valid." }),
+            ServiceResultStatus.Forbidden => Unauthorized(new { error = "Invalid credentials." }),
             _ => StatusCode(500)
         };
     }
