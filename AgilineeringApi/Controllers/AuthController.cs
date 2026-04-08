@@ -1,14 +1,12 @@
-using AgilineeringApi.Data;
 using AgilineeringApi.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.EntityFrameworkCore;
 
 namespace AgilineeringApi.Controllers;
 
 [ApiController]
 [Route("auth")]
-public class AuthController(IAuthService authService, AppDbContext db) : ControllerBase
+public class AuthController(IAuthService authService) : ControllerBase
 {
     [HttpPost("login")]
     [EnableRateLimiting("login")]
@@ -27,24 +25,4 @@ public class AuthController(IAuthService authService, AppDbContext db) : Control
 
         return Ok(result.Response);
     }
-
-    [HttpPost("set-password")]
-    public async Task<IActionResult> SetPassword([FromBody] SetPasswordRequest request)
-    {
-        if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.NewPassword))
-            return BadRequest(new { error = "Username and newPassword are required." });
-
-        var user = await db.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
-        if (user is null)
-            return NotFound(new { error = "User not found." });
-
-        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword, workFactor: 12);
-        user.FailedLoginAttempts = 0;
-        user.LockoutEnd = null;
-        await db.SaveChangesAsync();
-
-        return Ok(new { message = "Password updated." });
-    }
 }
-
-public record SetPasswordRequest(string Username, string NewPassword);
