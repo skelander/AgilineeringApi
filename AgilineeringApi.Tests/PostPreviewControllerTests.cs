@@ -44,7 +44,7 @@ public class PostPreviewControllerTests : IClassFixture<AgilineeringFactory>
     {
         await _client.AuthenticateAsync();
         var post = await CreateDraftAsync("create-preview-unauth");
-        _client.DefaultRequestHeaders.Authorization = null;
+        await _client.LogoutAsync();
 
         var resp = await _client.PostAsJsonAsync($"/posts/{post.Id}/previews",
             new CreatePreviewRequest("Anna", "secret"));
@@ -101,7 +101,7 @@ public class PostPreviewControllerTests : IClassFixture<AgilineeringFactory>
         var createResp = await _client.PostAsJsonAsync($"/posts/{post.Id}/previews",
             new CreatePreviewRequest("Anna", "secret"));
         var preview = await createResp.Content.ReadFromJsonAsync<PreviewResponse>();
-        _client.DefaultRequestHeaders.Authorization = null;
+        await _client.LogoutAsync();
 
         var resp = await _client.GetAsync($"/posts/preview/{preview!.Token}");
 
@@ -125,7 +125,7 @@ public class PostPreviewControllerTests : IClassFixture<AgilineeringFactory>
         var preview = await createResp.Content.ReadFromJsonAsync<PreviewResponse>();
 
         await _client.DeleteAsync($"/posts/{post.Id}");
-        _client.DefaultRequestHeaders.Authorization = null;
+        await _client.LogoutAsync();
 
         var resp = await _client.GetAsync($"/posts/preview/{preview!.Token}");
 
@@ -141,7 +141,7 @@ public class PostPreviewControllerTests : IClassFixture<AgilineeringFactory>
         var createResp = await _client.PostAsJsonAsync($"/posts/{post.Id}/previews",
             new CreatePreviewRequest("Anna", "secret"));
         var preview = await createResp.Content.ReadFromJsonAsync<PreviewResponse>();
-        _client.DefaultRequestHeaders.Authorization = null;
+        await _client.LogoutAsync();
 
         var resp = await _client.PostAsJsonAsync($"/posts/preview/{preview!.Token}/access",
             new PreviewAccessRequest("Anna", "secret"));
@@ -159,7 +159,7 @@ public class PostPreviewControllerTests : IClassFixture<AgilineeringFactory>
         var createResp = await _client.PostAsJsonAsync($"/posts/{post.Id}/previews",
             new CreatePreviewRequest("Anna", "secret"));
         var preview = await createResp.Content.ReadFromJsonAsync<PreviewResponse>();
-        _client.DefaultRequestHeaders.Authorization = null;
+        await _client.LogoutAsync();
 
         var resp = await _client.PostAsJsonAsync($"/posts/preview/{preview!.Token}/access",
             new PreviewAccessRequest("ANNA", "secret"));
@@ -174,7 +174,7 @@ public class PostPreviewControllerTests : IClassFixture<AgilineeringFactory>
         var createResp = await _client.PostAsJsonAsync($"/posts/{post.Id}/previews",
             new CreatePreviewRequest("Anna", "secret"));
         var preview = await createResp.Content.ReadFromJsonAsync<PreviewResponse>();
-        _client.DefaultRequestHeaders.Authorization = null;
+        await _client.LogoutAsync();
 
         var resp = await _client.PostAsJsonAsync($"/posts/preview/{preview!.Token}/access",
             new PreviewAccessRequest("Anna", "wrong"));
@@ -189,7 +189,7 @@ public class PostPreviewControllerTests : IClassFixture<AgilineeringFactory>
         var createResp = await _client.PostAsJsonAsync($"/posts/{post.Id}/previews",
             new CreatePreviewRequest("Anna", "secret"));
         var preview = await createResp.Content.ReadFromJsonAsync<PreviewResponse>();
-        _client.DefaultRequestHeaders.Authorization = null;
+        await _client.LogoutAsync();
 
         var resp = await _client.PostAsJsonAsync($"/posts/preview/{preview!.Token}/access",
             new PreviewAccessRequest("Kalle", "secret"));
@@ -200,7 +200,7 @@ public class PostPreviewControllerTests : IClassFixture<AgilineeringFactory>
     [Fact]
     public async Task Access_NonExistentToken_Returns401()
     {
-        _client.DefaultRequestHeaders.Authorization = null;
+        await _client.LogoutAsync();
 
         var resp = await _client.PostAsJsonAsync("/posts/preview/doesnotexist/access",
             new PreviewAccessRequest("Anna", "secret"));
@@ -215,7 +215,7 @@ public class PostPreviewControllerTests : IClassFixture<AgilineeringFactory>
     [InlineData("   ", "secret")]
     public async Task Access_EmptyCredentials_Returns400(string name, string password)
     {
-        _client.DefaultRequestHeaders.Authorization = null;
+        await _client.LogoutAsync();
 
         var resp = await _client.PostAsJsonAsync("/posts/preview/sometoken/access",
             new PreviewAccessRequest(name, password));
@@ -232,7 +232,7 @@ public class PostPreviewControllerTests : IClassFixture<AgilineeringFactory>
         var preview = await createResp.Content.ReadFromJsonAsync<PreviewResponse>();
 
         await _client.DeleteAsync($"/posts/{post.Id}");
-        _client.DefaultRequestHeaders.Authorization = null;
+        await _client.LogoutAsync();
 
         var resp = await _client.PostAsJsonAsync($"/posts/preview/{preview!.Token}/access",
             new PreviewAccessRequest("Anna", "secret"));

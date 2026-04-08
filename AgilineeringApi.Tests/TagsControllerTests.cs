@@ -35,7 +35,7 @@ public class TagsControllerTests : IClassFixture<AgilineeringFactory>
     [Fact]
     public async Task Create_Unauthenticated_Returns401()
     {
-        _client.DefaultRequestHeaders.Authorization = null;
+        await _client.LogoutAsync();
         var response = await _client.PostAsJsonAsync("/tags", new CreateTagRequest("Test", "test"));
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }

@@ -20,7 +20,7 @@ public class PostsControllerTests : IClassFixture<AgilineeringFactory>
         await _client.AuthenticateAsync();
         await _client.PostAsJsonAsync("/posts", new CreatePostRequest("Draft", "Body", "draft-post", false, []));
         await _client.PostAsJsonAsync("/posts", new CreatePostRequest("Published", "Body", "published-post", true, []));
-        _client.DefaultRequestHeaders.Authorization = null;
+        await _client.LogoutAsync();
 
         var result = await _client.GetFromJsonAsync<PagedResult<PostSummaryResponse>>("/posts");
         var posts = result?.Items.ToList();
@@ -57,7 +57,7 @@ public class PostsControllerTests : IClassFixture<AgilineeringFactory>
     [Fact]
     public async Task Create_Unauthenticated_Returns401()
     {
-        _client.DefaultRequestHeaders.Authorization = null;
+        await _client.LogoutAsync();
         var response = await _client.PostAsJsonAsync("/posts",
             new CreatePostRequest("Test", "Content", "test-slug", true, []));
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -77,7 +77,7 @@ public class PostsControllerTests : IClassFixture<AgilineeringFactory>
     {
         await _client.AuthenticateAsync();
         await _client.PostAsJsonAsync("/posts", new CreatePostRequest("Slugged", "Body", "slugged-post", true, []));
-        _client.DefaultRequestHeaders.Authorization = null;
+        await _client.LogoutAsync();
 
         var post = await _client.GetFromJsonAsync<PostDetailResponse>("/posts/slugged-post");
         Assert.NotNull(post);
@@ -96,7 +96,7 @@ public class PostsControllerTests : IClassFixture<AgilineeringFactory>
     {
         await _client.AuthenticateAsync();
         await _client.PostAsJsonAsync("/posts", new CreatePostRequest("Hidden Draft", "Body", "hidden-draft", false, []));
-        _client.DefaultRequestHeaders.Authorization = null;
+        await _client.LogoutAsync();
 
         var response = await _client.GetAsync("/posts/hidden-draft");
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -229,7 +229,7 @@ public class PostsControllerTests : IClassFixture<AgilineeringFactory>
 
         await _client.PostAsJsonAsync("/posts", new CreatePostRequest("Tagged", "Body", "tagged-filter-post", true, [tag!.Id]));
         await _client.PostAsJsonAsync("/posts", new CreatePostRequest("Untagged", "Body", "untagged-filter-post", true, []));
-        _client.DefaultRequestHeaders.Authorization = null;
+        await _client.LogoutAsync();
 
         var result = await _client.GetFromJsonAsync<PagedResult<PostSummaryResponse>>("/posts?tag=filter-tag");
         Assert.NotNull(result);

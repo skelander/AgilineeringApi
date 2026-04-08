@@ -44,6 +44,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = builder.Configuration["Jwt:Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
         };
+        options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
+        {
+            OnMessageReceived = ctx =>
+            {
+                if (ctx.Request.Cookies.TryGetValue("auth_token", out var token))
+                    ctx.Token = token;
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorization();
@@ -52,7 +61,8 @@ builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>
         policy.WithOrigins(builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? [])
               .AllowAnyHeader()
-              .WithMethods("GET", "POST", "PUT", "DELETE")));
+              .WithMethods("GET", "POST", "PUT", "DELETE")
+              .AllowCredentials()));
 
 builder.Services.AddRateLimiter(options =>
 {

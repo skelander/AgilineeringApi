@@ -16,7 +16,7 @@ public class ImagesControllerTests : IClassFixture<AgilineeringFactory>
     [Fact]
     public async Task Upload_Unauthenticated_Returns401()
     {
-        _client.DefaultRequestHeaders.Authorization = null;
+        await _client.LogoutAsync();
         using var content = new MultipartFormDataContent();
         content.Add(new ByteArrayContent([0xFF, 0xD8, 0xFF]), "file", "test.jpg");
 

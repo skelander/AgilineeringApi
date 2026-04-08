@@ -8,7 +8,7 @@ namespace AgilineeringApi.Controllers;
 
 [ApiController]
 [Route("auth")]
-public class AuthController(IAuthService authService) : ControllerBase
+public class AuthController(IAuthService authService, IConfiguration configuration, IWebHostEnvironment env) : ControllerBase
 {
     [HttpPost("login")]
     [EnableRateLimiting("login")]
@@ -25,7 +25,30 @@ public class AuthController(IAuthService authService) : ControllerBase
         if (result.Response is null)
             return Unauthorized(new { error = result.Error });
 
-        return Ok(result.Response);
+        var expiryHours = configuration.GetValue("Jwt:ExpiryHours", 8);
+        Response.Cookies.Append("auth_token", result.Response.Token, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = env.IsProduction(),
+            SameSite = env.IsProduction() ? SameSiteMode.None : SameSiteMode.Lax,
+            Expires = DateTimeOffset.UtcNow.AddHours(expiryHours),
+            Path = "/"
+        });
+
+        return Ok(new { role = result.Response.Role });
+    }
+
+    [HttpPost("logout")]
+    public IActionResult Logout()
+    {
+        Response.Cookies.Delete("auth_token", new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = env.IsProduction(),
+            SameSite = env.IsProduction() ? SameSiteMode.None : SameSiteMode.Lax,
+            Path = "/"
+        });
+        return NoContent();
     }
 
     [HttpPost("change-password")]

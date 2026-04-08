@@ -1,4 +1,3 @@
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using AgilineeringApi.Services;
 
@@ -10,7 +9,11 @@ public static class TestHelpers
     {
         var response = await client.PostAsJsonAsync("/auth/login", new LoginRequest(username, password));
         response.EnsureSuccessStatusCode();
-        var body = await response.Content.ReadFromJsonAsync<LoginResponse>();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", body!.Token);
+        // auth_token cookie is handled automatically by the test client's cookie container
+    }
+
+    public static async Task LogoutAsync(this HttpClient client)
+    {
+        await client.PostAsync("/auth/logout", null);
     }
 }

@@ -16,13 +16,15 @@ public class AuthControllerTests : IClassFixture<AgilineeringFactory>
     }
 
     [Fact]
-    public async Task Login_ValidAdminCredentials_ReturnsToken()
+    public async Task Login_ValidAdminCredentials_ReturnsCookieAndRole()
     {
         var response = await _client.PostAsJsonAsync("/auth/login", new LoginRequest("admin", "admin"));
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<LoginResponse>();
-        Assert.NotNull(body?.Token);
+        var body = await response.Content.ReadFromJsonAsync<LoginRoleResponse>();
         Assert.Equal("admin", body!.Role);
+        Assert.True(response.Headers.Contains("Set-Cookie") ||
+                    response.Headers.TryGetValues("Set-Cookie", out _) ||
+                    _client.DefaultRequestHeaders.Contains("Cookie"));
     }
 
     [Theory]
