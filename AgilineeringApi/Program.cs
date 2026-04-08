@@ -210,6 +210,7 @@ static bool IsWriteMethod(string method) =>
 static bool IsPublicWriteEndpoint(HttpRequest request)
 {
     var path = request.Path.Value ?? "";
+    if (path.Equals("/auth/login", StringComparison.OrdinalIgnoreCase)) return true;
     return path.Contains("/preview/", StringComparison.OrdinalIgnoreCase)
         && path.EndsWith("/access", StringComparison.OrdinalIgnoreCase);
 }
