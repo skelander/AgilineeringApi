@@ -49,7 +49,7 @@ public class PostsController(IPostsService postsService, ILogger<PostsController
 
         var result = await postsService.CreateAsync(request, authorId);
         if (result.Status == ServiceResultStatus.Ok)
-            logger.LogInformation("Admin {UserId} created post {Slug}", authorId, result.Value!.Slug);
+            logger.LogInformation("Admin {User} created post {Slug}", User.Identity?.Name, result.Value!.Slug);
         return result.Status switch
         {
             ServiceResultStatus.Ok => CreatedAtAction(nameof(GetBySlug), new { slug = result.Value!.Slug }, result.Value),

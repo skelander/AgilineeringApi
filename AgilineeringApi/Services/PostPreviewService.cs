@@ -41,10 +41,7 @@ public class PostPreviewService(AppDbContext db, ILogger<PostPreviewService> log
         if (preview is null)
             return ServiceResult<PostDetailResponse>.NotFound("Preview not found.");
 
-        // Always verify both name and password to avoid timing side-channel
-        var nameMatch = string.Equals(preview.Name, request.Name, StringComparison.OrdinalIgnoreCase);
-        var passwordMatch = BCrypt.Net.BCrypt.Verify(request.Password, preview.PasswordHash);
-        if (!nameMatch || !passwordMatch)
+        if (!VerifyCredentials(preview, request.Name, request.Password))
         {
             logger.LogWarning("Failed preview access attempt for token {Token} by name {Name}", token, request.Name);
             return ServiceResult<PostDetailResponse>.Forbidden("Invalid credentials.");
@@ -60,13 +57,11 @@ public class PostPreviewService(AppDbContext db, ILogger<PostPreviewService> log
 
     public async Task<ServiceResult<CommentResponse>> AddCommentAsync(string token, CreateCommentRequest request)
     {
-        var preview = await db.PostPreviews.FirstOrDefaultAsync(pp => pp.Token == token);
+        var preview = await db.PostPreviews.AsNoTracking().FirstOrDefaultAsync(pp => pp.Token == token);
         if (preview is null)
             return ServiceResult<CommentResponse>.NotFound("Preview not found.");
 
-        var nameMatch = string.Equals(preview.Name, request.Name, StringComparison.OrdinalIgnoreCase);
-        var passwordMatch = BCrypt.Net.BCrypt.Verify(request.Password, preview.PasswordHash);
-        if (!nameMatch || !passwordMatch)
+        if (!VerifyCredentials(preview, request.Name, request.Password))
         {
             logger.LogWarning("Failed comment attempt for token {Token} by name {Name}", token, request.Name);
             return ServiceResult<CommentResponse>.Forbidden("Invalid credentials.");
@@ -85,13 +80,11 @@ public class PostPreviewService(AppDbContext db, ILogger<PostPreviewService> log
 
     public async Task<ServiceResult<IEnumerable<CommentResponse>>> GetCommentsAsync(string token, PreviewAccessRequest request)
     {
-        var preview = await db.PostPreviews.FirstOrDefaultAsync(pp => pp.Token == token);
+        var preview = await db.PostPreviews.AsNoTracking().FirstOrDefaultAsync(pp => pp.Token == token);
         if (preview is null)
             return ServiceResult<IEnumerable<CommentResponse>>.NotFound("Preview not found.");
 
-        var nameMatch = string.Equals(preview.Name, request.Name, StringComparison.OrdinalIgnoreCase);
-        var passwordMatch = BCrypt.Net.BCrypt.Verify(request.Password, preview.PasswordHash);
-        if (!nameMatch || !passwordMatch)
+        if (!VerifyCredentials(preview, request.Name, request.Password))
         {
             logger.LogWarning("Failed comments list attempt for token {Token} by name {Name}", token, request.Name);
             return ServiceResult<IEnumerable<CommentResponse>>.Forbidden("Invalid credentials.");
@@ -104,6 +97,11 @@ public class PostPreviewService(AppDbContext db, ILogger<PostPreviewService> log
             .ToListAsync();
         return ServiceResult<IEnumerable<CommentResponse>>.Ok(comments);
     }
+
+    // Always verify both fields to avoid timing side-channel leaking which field was wrong
+    private static bool VerifyCredentials(PostPreview preview, string name, string password) =>
+        string.Equals(preview.Name, name, StringComparison.OrdinalIgnoreCase) &
+        BCrypt.Net.BCrypt.Verify(password, preview.PasswordHash);
 
     private static PreviewResponse ToResponse(PostPreview pp) =>
         new(pp.Id, pp.Token, pp.Name, pp.CreatedAt);
