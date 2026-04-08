@@ -187,6 +187,25 @@ static void ApplySchemaChanges(AppDbContext db, ILogger logger)
 
 static async Task SeedDataAsync(AppDbContext db, IConfiguration configuration, ILogger logger)
 {
+    // One-time forced password reset: set Seed:ForceAdminPassword=true + Seed:AdminPassword=<new>
+    // Remove the secret after use to prevent repeated resets.
+    if (configuration.GetValue<bool>("Seed:ForceAdminPassword"))
+    {
+        var forcedPassword = configuration["Seed:AdminPassword"];
+        if (!string.IsNullOrWhiteSpace(forcedPassword))
+        {
+            var adminUser = await db.Users.FirstOrDefaultAsync(u => u.Username == "admin");
+            if (adminUser is not null)
+            {
+                adminUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(forcedPassword, workFactor: 12);
+                adminUser.FailedLoginAttempts = 0;
+                adminUser.LockoutEnd = null;
+                await db.SaveChangesAsync();
+                logger.LogWarning("Admin password forcibly reset via Seed:ForceAdminPassword. Remove this secret now.");
+            }
+        }
+    }
+
     if (!await db.Users.AnyAsync())
     {
         var configuredPassword = configuration["Seed:AdminPassword"];
