@@ -11,14 +11,15 @@ public class ImagesController(IConfiguration configuration, IWebHostEnvironment 
     private static readonly HashSet<string> AllowedExtensions = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
     private static readonly long MaxFileSizeBytes = 10 * 1024 * 1024; // 10 MB
 
-    // Magic bytes for each allowed image format
-    private static readonly Dictionary<string, byte[][]> MagicBytes = new()
+    // Magic bytes for each allowed image format: (offset, signature)
+    private static readonly Dictionary<string, (int Offset, byte[])[]> MagicBytes = new()
     {
-        [".jpg"]  = [[0xFF, 0xD8, 0xFF]],
-        [".jpeg"] = [[0xFF, 0xD8, 0xFF]],
-        [".png"]  = [[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]],
-        [".gif"]  = [[0x47, 0x49, 0x46, 0x38, 0x37, 0x61], [0x47, 0x49, 0x46, 0x38, 0x39, 0x61]],
-        [".webp"] = [[0x52, 0x49, 0x46, 0x46]], // RIFF....WEBP
+        [".jpg"]  = [(0, [0xFF, 0xD8, 0xFF])],
+        [".jpeg"] = [(0, [0xFF, 0xD8, 0xFF])],
+        [".png"]  = [(0, [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])],
+        [".gif"]  = [(0, [0x47, 0x49, 0x46, 0x38, 0x37, 0x61]), (0, [0x47, 0x49, 0x46, 0x38, 0x39, 0x61])],
+        // WEBP: bytes 0-3 = "RIFF", bytes 8-11 = "WEBP"
+        [".webp"] = [(0, [0x52, 0x49, 0x46, 0x46]), (8, [0x57, 0x45, 0x42, 0x50])],
     };
 
     [HttpPost]
@@ -68,16 +69,39 @@ public class ImagesController(IConfiguration configuration, IWebHostEnvironment 
 
     private static async Task<bool> HasValidMagicBytesAsync(IFormFile file, string ext)
     {
-        if (!MagicBytes.TryGetValue(ext, out var signatures))
+        if (!MagicBytes.TryGetValue(ext, out var checks))
             return false;
 
-        var maxLen = signatures.Max(s => s.Length);
-        var header = new byte[maxLen];
+        // For formats with multiple alternatives (e.g. GIF87a/GIF89a), each entry is one alternative.
+        // For formats requiring multiple markers at different offsets (e.g. WEBP = RIFF + WEBP),
+        // all checks for that extension must pass.
+        var bufSize = checks.Max(c => c.Offset + c.Item2.Length);
+        var header = new byte[bufSize];
         var stream = file.OpenReadStream();
         await using (stream.ConfigureAwait(false))
         {
-            var read = await stream.ReadAsync(header.AsMemory(0, maxLen)).ConfigureAwait(false);
-            return signatures.Any(sig => header.AsSpan(0, read).StartsWith(sig));
+            var read = 0;
+            while (read < bufSize)
+            {
+                var n = await stream.ReadAsync(header.AsMemory(read, bufSize - read)).ConfigureAwait(false);
+                if (n == 0) break;
+                read += n;
+            }
+
+            // Group checks by whether the format has alternatives (offset 0 only)
+            // vs. required multi-marker validation (WEBP: all checks must pass)
+            bool MatchesAll() => checks.All(c =>
+                read >= c.Offset + c.Item2.Length &&
+                header.AsSpan(c.Offset, c.Item2.Length).SequenceEqual(c.Item2));
+
+            // For single-offset formats with alternatives, any match suffices
+            var hasAlternatives = checks.Length > 1 && checks.All(c => c.Offset == 0);
+            if (hasAlternatives)
+                return checks.Any(c =>
+                    read >= c.Item2.Length &&
+                    header.AsSpan(0, c.Item2.Length).SequenceEqual(c.Item2));
+
+            return MatchesAll();
         }
     }
 }
