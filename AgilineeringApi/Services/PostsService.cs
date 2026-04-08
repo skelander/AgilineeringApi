@@ -60,8 +60,9 @@ public class PostsService(AppDbContext db) : IPostsService
         if (missingIds.Count > 0)
             return ServiceResult<PostDetailResponse>.BadRequest($"Tag IDs not found: {string.Join(", ", missingIds)}.");
 
-        var author = await db.Users.FindAsync(authorId)
-            ?? throw new InvalidOperationException($"Author {authorId} not found.");
+        var author = await db.Users.FindAsync(authorId);
+        if (author is null)
+            return ServiceResult<PostDetailResponse>.BadRequest($"Author {authorId} not found.");
         var now = DateTime.UtcNow;
         var post = new Post
         {
