@@ -27,6 +27,9 @@ jobs:
       - name: Restore
         run: dotnet restore AgilineeringApi.Tests/AgilineeringApi.Tests.csproj
 
+      - name: Audit NuGet packages
+        run: dotnet list AgilineeringApi.Tests/AgilineeringApi.Tests.csproj package --vulnerable --include-transitive 2>&1 | tee /tmp/audit.txt && ! grep -q "has the following vulnerable packages" /tmp/audit.txt
+
       - name: Build
         run: dotnet build AgilineeringApi.Tests/AgilineeringApi.Tests.csproj --no-restore
 

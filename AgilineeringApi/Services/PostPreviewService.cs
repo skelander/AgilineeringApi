@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AgilineeringApi.Services;
 
-public class PostPreviewService(AppDbContext db) : IPostPreviewService
+public class PostPreviewService(AppDbContext db, ILogger<PostPreviewService> logger) : IPostPreviewService
 {
     public async Task<ServiceResult<PreviewResponse>> CreateAsync(int postId, CreatePreviewRequest request)
     {
@@ -45,8 +45,12 @@ public class PostPreviewService(AppDbContext db) : IPostPreviewService
         var nameMatch = string.Equals(preview.Name, request.Name, StringComparison.OrdinalIgnoreCase);
         var passwordMatch = BCrypt.Net.BCrypt.Verify(request.Password, preview.PasswordHash);
         if (!nameMatch || !passwordMatch)
+        {
+            logger.LogWarning("Failed preview access attempt for token {Token} by name {Name}", token, request.Name);
             return ServiceResult<PostDetailResponse>.Forbidden("Invalid credentials.");
+        }
 
+        logger.LogInformation("Preview accessed for token {Token} by {Name}", token, request.Name);
         var post = preview.Post;
         return ServiceResult<PostDetailResponse>.Ok(new PostDetailResponse(
             post.Id, post.Title, post.Content, post.Slug, post.Published,
@@ -63,7 +67,10 @@ public class PostPreviewService(AppDbContext db) : IPostPreviewService
         var nameMatch = string.Equals(preview.Name, request.Name, StringComparison.OrdinalIgnoreCase);
         var passwordMatch = BCrypt.Net.BCrypt.Verify(request.Password, preview.PasswordHash);
         if (!nameMatch || !passwordMatch)
+        {
+            logger.LogWarning("Failed comment attempt for token {Token} by name {Name}", token, request.Name);
             return ServiceResult<CommentResponse>.Forbidden("Invalid credentials.");
+        }
 
         var comment = new PreviewComment
         {
@@ -85,7 +92,10 @@ public class PostPreviewService(AppDbContext db) : IPostPreviewService
         var nameMatch = string.Equals(preview.Name, request.Name, StringComparison.OrdinalIgnoreCase);
         var passwordMatch = BCrypt.Net.BCrypt.Verify(request.Password, preview.PasswordHash);
         if (!nameMatch || !passwordMatch)
+        {
+            logger.LogWarning("Failed comments list attempt for token {Token} by name {Name}", token, request.Name);
             return ServiceResult<IEnumerable<CommentResponse>>.Forbidden("Invalid credentials.");
+        }
 
         var comments = await db.PreviewComments
             .Where(c => c.PreviewId == preview.Id)
