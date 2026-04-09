@@ -68,6 +68,8 @@ builder.Services.AddCors(options =>
               .WithMethods("GET", "POST", "PUT", "DELETE")
               .AllowCredentials()));
 
+builder.Services.AddResponseCaching();
+
 builder.Services.AddRateLimiter(options =>
 {
     options.AddPolicy("read", context =>
@@ -117,7 +119,7 @@ app.Use(async (context, next) =>
     context.Response.Headers["X-Frame-Options"] = "DENY";
     context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
     context.Response.Headers["Content-Security-Policy"] = "default-src 'none'; img-src 'self'; frame-ancestors 'none'";
-    context.Response.Headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
+    context.Response.Headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload";
     context.Response.Headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()";
     await next();
 });
@@ -159,6 +161,7 @@ app.UseStaticFiles(new StaticFileOptions
     RequestPath = "/images"
 });
 
+app.UseResponseCaching();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();

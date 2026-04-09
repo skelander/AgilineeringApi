@@ -24,6 +24,7 @@ public class ImagesController(IConfiguration configuration, IWebHostEnvironment 
 
     [HttpGet]
     [Authorize(Roles = "admin")]
+    [EnableRateLimiting("read")]
     public IActionResult List()
     {
         var dir = GetImagesDir();
