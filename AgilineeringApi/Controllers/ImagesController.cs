@@ -22,6 +22,55 @@ public class ImagesController(IConfiguration configuration, IWebHostEnvironment 
         [".webp"] = [(0, [0x52, 0x49, 0x46, 0x46]), (8, [0x57, 0x45, 0x42, 0x50])],
     };
 
+    [HttpGet]
+    [Authorize(Roles = "admin")]
+    public IActionResult List()
+    {
+        var dir = GetImagesDir();
+        if (!Directory.Exists(dir))
+            return Ok(Array.Empty<object>());
+
+        var images = Directory.GetFiles(dir)
+            .Where(f => AllowedExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
+            .Select(f =>
+            {
+                var info = new FileInfo(f);
+                return new
+                {
+                    filename = info.Name,
+                    url = $"/images/{info.Name}",
+                    size = info.Length,
+                    createdAt = info.CreationTimeUtc,
+                };
+            })
+            .OrderByDescending(x => x.createdAt)
+            .ToList();
+
+        return Ok(images);
+    }
+
+    [HttpDelete("{filename}")]
+    [Authorize(Roles = "admin")]
+    [EnableRateLimiting("write")]
+    public IActionResult Delete(string filename)
+    {
+        var safeFilename = Path.GetFileName(filename);
+        if (safeFilename != filename)
+            return BadRequest(new { error = "Invalid filename." });
+
+        var ext = Path.GetExtension(safeFilename).ToLowerInvariant();
+        if (!AllowedExtensions.Contains(ext))
+            return BadRequest(new { error = "Invalid file type." });
+
+        var fullPath = Path.Combine(GetImagesDir(), safeFilename);
+        if (!System.IO.File.Exists(fullPath))
+            return NotFound(new { error = "Image not found." });
+
+        System.IO.File.Delete(fullPath);
+        logger.LogInformation("Admin {User} deleted image {FileName}", User.Identity?.Name ?? "unknown", safeFilename);
+        return NoContent();
+    }
+
     [HttpPost]
     [Authorize(Roles = "admin")]
     [EnableRateLimiting("write")]
@@ -40,11 +89,7 @@ public class ImagesController(IConfiguration configuration, IWebHostEnvironment 
         if (!await HasValidMagicBytesAsync(file, ext))
             return BadRequest(new { error = "File contents do not match the declared image type." });
 
-        var imagesPath = configuration["Storage:ImagesPath"] ?? "images";
-        var dir = Path.IsPathRooted(imagesPath)
-            ? imagesPath
-            : Path.Combine(env.ContentRootPath, imagesPath);
-
+        var dir = GetImagesDir();
         Directory.CreateDirectory(dir);
 
         var fileName = $"{Guid.NewGuid():N}{ext}";
@@ -65,6 +110,14 @@ public class ImagesController(IConfiguration configuration, IWebHostEnvironment 
         logger.LogInformation("Admin {User} uploaded image {FileName}", User.Identity?.Name ?? "unknown", fileName);
 
         return Created($"/images/{fileName}", new { url = $"/images/{fileName}" });
+    }
+
+    private string GetImagesDir()
+    {
+        var imagesPath = configuration["Storage:ImagesPath"] ?? "images";
+        return Path.IsPathRooted(imagesPath)
+            ? imagesPath
+            : Path.Combine(env.ContentRootPath, imagesPath);
     }
 
     private static async Task<bool> HasValidMagicBytesAsync(IFormFile file, string ext)
