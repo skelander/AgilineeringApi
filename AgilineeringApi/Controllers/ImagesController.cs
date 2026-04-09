@@ -62,7 +62,7 @@ public class ImagesController(IConfiguration configuration, IWebHostEnvironment 
             throw;
         }
 
-        logger.LogInformation("Image uploaded: {FileName}", fileName);
+        logger.LogInformation("Admin {User} uploaded image {FileName}", User.Identity?.Name ?? "unknown", fileName);
 
         return Created($"/images/{fileName}", new { url = $"/images/{fileName}" });
     }

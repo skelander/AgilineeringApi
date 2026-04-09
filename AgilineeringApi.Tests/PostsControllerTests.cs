@@ -237,6 +237,17 @@ public class PostsControllerTests : IClassFixture<AgilineeringFactory>
         Assert.DoesNotContain(result.Items, p => p.Slug == "untagged-filter-post");
     }
 
+    [Theory]
+    [InlineData("Invalid Tag")]
+    [InlineData("tag with spaces")]
+    [InlineData("tag!special")]
+    [InlineData("UPPERCASE")]
+    public async Task GetAll_InvalidTagFormat_Returns400(string tag)
+    {
+        var response = await _client.GetAsync($"/posts?tag={Uri.EscapeDataString(tag)}");
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     [Fact]
     public async Task GetAll_InvalidTag_ReturnsEmptyPage()
     {

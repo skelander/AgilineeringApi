@@ -36,6 +36,7 @@ public class AgilineeringFactory : WebApplicationFactory<Program>
         builder.UseSetting("Jwt:Key", "test-secret-key-minimum-32-characters-long!");
         builder.UseSetting("Jwt:Issuer", "AgilineeringApi");
         builder.UseSetting("Jwt:Audience", "AgilineeringApi");
+        builder.UseSetting("Security:ReadRateLimit", "1000");
         builder.UseSetting("Security:LoginRateLimit", "1000");
         builder.UseSetting("Security:WriteRateLimit", "1000");
         builder.UseSetting("Security:MaxFailedLoginAttempts", "3");

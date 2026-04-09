@@ -14,6 +14,10 @@ public class PostPreviewService(AppDbContext db, ILogger<PostPreviewService> log
         if (post.Published)
             return ServiceResult<PreviewResponse>.BadRequest("Published posts do not need preview links.");
 
+        var previewCount = await db.PostPreviews.CountAsync(pp => pp.PostId == postId);
+        if (previewCount >= 20)
+            return ServiceResult<PreviewResponse>.BadRequest("This post already has the maximum number of previews (20).");
+
         var preview = new PostPreview
         {
             PostId = postId,
@@ -95,6 +99,7 @@ public class PostPreviewService(AppDbContext db, ILogger<PostPreviewService> log
         var comments = await db.PreviewComments
             .Where(c => c.PreviewId == preview.Id)
             .OrderBy(c => c.CreatedAt)
+            .Take(100)
             .Select(c => new CommentResponse(c.Id, c.Body, c.CreatedAt))
             .ToListAsync();
         return ServiceResult<IEnumerable<CommentResponse>>.Ok(comments);
