@@ -30,13 +30,12 @@ public class PostPreviewControllerTests : IClassFixture<AgilineeringFactory>
         var post = await CreateDraftAsync("create-preview-draft");
 
         var resp = await _client.PostAsJsonAsync($"/posts/{post.Id}/previews",
-            new CreatePreviewRequest("Anna", "secret"));
+            new CreatePreviewRequest("secret"));
 
         Assert.Equal(HttpStatusCode.Created, resp.StatusCode);
         var preview = await resp.Content.ReadFromJsonAsync<PreviewResponse>();
         Assert.NotNull(preview);
-        Assert.Equal("Anna", preview!.Name);
-        Assert.NotEmpty(preview.Token);
+        Assert.NotEmpty(preview!.Token);
     }
 
     [Fact]
@@ -47,7 +46,7 @@ public class PostPreviewControllerTests : IClassFixture<AgilineeringFactory>
         await _client.LogoutAsync();
 
         var resp = await _client.PostAsJsonAsync($"/posts/{post.Id}/previews",
-            new CreatePreviewRequest("Anna", "secret"));
+            new CreatePreviewRequest("secret"));
 
         Assert.Equal(HttpStatusCode.Unauthorized, resp.StatusCode);
     }
@@ -58,7 +57,7 @@ public class PostPreviewControllerTests : IClassFixture<AgilineeringFactory>
         await _client.AuthenticateAsync();
 
         var resp = await _client.PostAsJsonAsync("/posts/99999/previews",
-            new CreatePreviewRequest("Anna", "secret"));
+            new CreatePreviewRequest("secret"));
 
         Assert.Equal(HttpStatusCode.NotFound, resp.StatusCode);
     }
@@ -72,22 +71,21 @@ public class PostPreviewControllerTests : IClassFixture<AgilineeringFactory>
         var post = await postResp.Content.ReadFromJsonAsync<PostDetailResponse>();
 
         var resp = await _client.PostAsJsonAsync($"/posts/{post!.Id}/previews",
-            new CreatePreviewRequest("Anna", "secret"));
+            new CreatePreviewRequest("secret"));
 
         Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
     }
 
     [Theory]
-    [InlineData("", "secret")]
-    [InlineData("Anna", "")]
-    [InlineData("   ", "secret")]
-    [InlineData("Anna", "abc")]   // password too short (< 6 chars)
-    public async Task Create_InvalidInput_Returns400(string name, string password)
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("abc")]  // too short (< 6 chars)
+    public async Task Create_InvalidPassword_Returns400(string password)
     {
         var post = await CreateDraftAsync("create-preview-invalid");
 
         var resp = await _client.PostAsJsonAsync($"/posts/{post.Id}/previews",
-            new CreatePreviewRequest(name, password));
+            new CreatePreviewRequest(password));
 
         Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
     }
@@ -99,7 +97,7 @@ public class PostPreviewControllerTests : IClassFixture<AgilineeringFactory>
     {
         var post = await CreateDraftAsync("check-token-exists");
         var createResp = await _client.PostAsJsonAsync($"/posts/{post.Id}/previews",
-            new CreatePreviewRequest("Anna", "secret"));
+            new CreatePreviewRequest("secret"));
         var preview = await createResp.Content.ReadFromJsonAsync<PreviewResponse>();
         await _client.LogoutAsync();
 
@@ -121,7 +119,7 @@ public class PostPreviewControllerTests : IClassFixture<AgilineeringFactory>
     {
         var post = await CreateDraftAsync("check-token-after-delete");
         var createResp = await _client.PostAsJsonAsync($"/posts/{post.Id}/previews",
-            new CreatePreviewRequest("Anna", "secret"));
+            new CreatePreviewRequest("secret"));
         var preview = await createResp.Content.ReadFromJsonAsync<PreviewResponse>();
 
         await _client.DeleteAsync($"/posts/{post.Id}");
@@ -135,16 +133,16 @@ public class PostPreviewControllerTests : IClassFixture<AgilineeringFactory>
     // --- Access preview ---
 
     [Fact]
-    public async Task Access_CorrectCredentials_ReturnsPost()
+    public async Task Access_CorrectPassword_ReturnsPost()
     {
         var post = await CreateDraftAsync("access-preview-ok");
         var createResp = await _client.PostAsJsonAsync($"/posts/{post.Id}/previews",
-            new CreatePreviewRequest("Anna", "secret"));
+            new CreatePreviewRequest("secret"));
         var preview = await createResp.Content.ReadFromJsonAsync<PreviewResponse>();
         await _client.LogoutAsync();
 
         var resp = await _client.PostAsJsonAsync($"/posts/preview/{preview!.Token}/access",
-            new PreviewAccessRequest("Anna", "secret"));
+            new PreviewAccessRequest("secret"));
 
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
         var result = await resp.Content.ReadFromJsonAsync<PostDetailResponse>();
@@ -153,46 +151,16 @@ public class PostPreviewControllerTests : IClassFixture<AgilineeringFactory>
     }
 
     [Fact]
-    public async Task Access_NameCaseInsensitive_ReturnsPost()
-    {
-        var post = await CreateDraftAsync("access-preview-case");
-        var createResp = await _client.PostAsJsonAsync($"/posts/{post.Id}/previews",
-            new CreatePreviewRequest("Anna", "secret"));
-        var preview = await createResp.Content.ReadFromJsonAsync<PreviewResponse>();
-        await _client.LogoutAsync();
-
-        var resp = await _client.PostAsJsonAsync($"/posts/preview/{preview!.Token}/access",
-            new PreviewAccessRequest("ANNA", "secret"));
-
-        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
-    }
-
-    [Fact]
     public async Task Access_WrongPassword_Returns401()
     {
         var post = await CreateDraftAsync("access-preview-badpw");
         var createResp = await _client.PostAsJsonAsync($"/posts/{post.Id}/previews",
-            new CreatePreviewRequest("Anna", "secret"));
+            new CreatePreviewRequest("secret"));
         var preview = await createResp.Content.ReadFromJsonAsync<PreviewResponse>();
         await _client.LogoutAsync();
 
         var resp = await _client.PostAsJsonAsync($"/posts/preview/{preview!.Token}/access",
-            new PreviewAccessRequest("Anna", "wrong"));
-
-        Assert.Equal(HttpStatusCode.Unauthorized, resp.StatusCode);
-    }
-
-    [Fact]
-    public async Task Access_WrongName_Returns401()
-    {
-        var post = await CreateDraftAsync("access-preview-badname");
-        var createResp = await _client.PostAsJsonAsync($"/posts/{post.Id}/previews",
-            new CreatePreviewRequest("Anna", "secret"));
-        var preview = await createResp.Content.ReadFromJsonAsync<PreviewResponse>();
-        await _client.LogoutAsync();
-
-        var resp = await _client.PostAsJsonAsync($"/posts/preview/{preview!.Token}/access",
-            new PreviewAccessRequest("Kalle", "secret"));
+            new PreviewAccessRequest("wrong"));
 
         Assert.Equal(HttpStatusCode.Unauthorized, resp.StatusCode);
     }
@@ -203,22 +171,21 @@ public class PostPreviewControllerTests : IClassFixture<AgilineeringFactory>
         await _client.LogoutAsync();
 
         var resp = await _client.PostAsJsonAsync("/posts/preview/doesnotexist/access",
-            new PreviewAccessRequest("Anna", "secret"));
+            new PreviewAccessRequest("secret"));
 
         // Returns 401 (not 404) to prevent token enumeration via status code differences
         Assert.Equal(HttpStatusCode.Unauthorized, resp.StatusCode);
     }
 
     [Theory]
-    [InlineData("", "secret")]
-    [InlineData("Anna", "")]
-    [InlineData("   ", "secret")]
-    public async Task Access_EmptyCredentials_Returns400(string name, string password)
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task Access_EmptyPassword_Returns400(string password)
     {
         await _client.LogoutAsync();
 
         var resp = await _client.PostAsJsonAsync("/posts/preview/sometoken/access",
-            new PreviewAccessRequest(name, password));
+            new PreviewAccessRequest(password));
 
         Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
     }
@@ -228,14 +195,14 @@ public class PostPreviewControllerTests : IClassFixture<AgilineeringFactory>
     {
         var post = await CreateDraftAsync("cascade-delete-post");
         var createResp = await _client.PostAsJsonAsync($"/posts/{post.Id}/previews",
-            new CreatePreviewRequest("Anna", "secret"));
+            new CreatePreviewRequest("secret"));
         var preview = await createResp.Content.ReadFromJsonAsync<PreviewResponse>();
 
         await _client.DeleteAsync($"/posts/{post.Id}");
         await _client.LogoutAsync();
 
         var resp = await _client.PostAsJsonAsync($"/posts/preview/{preview!.Token}/access",
-            new PreviewAccessRequest("Anna", "secret"));
+            new PreviewAccessRequest("secret"));
 
         // Returns 401 (not 404) to prevent token enumeration
         Assert.Equal(HttpStatusCode.Unauthorized, resp.StatusCode);

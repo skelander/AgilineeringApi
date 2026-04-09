@@ -13,10 +13,6 @@ public class PostPreviewsController(IPostPreviewService previewService) : Contro
     [Authorize(Roles = "admin")]
     public async Task<IActionResult> Create(int postId, [FromBody] CreatePreviewRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Name))
-            return BadRequest(new { error = "Name is required." });
-        if (request.Name.Length > 200)
-            return BadRequest(new { error = "Name must be 200 characters or fewer." });
         if (string.IsNullOrWhiteSpace(request.Password))
             return BadRequest(new { error = "Password is required." });
         if (request.Password.Length < 6)
@@ -49,8 +45,8 @@ public class PostPreviewAccessController(IPostPreviewService previewService) : C
     [EnableRateLimiting("login")]
     public async Task<IActionResult> Access(string token, [FromBody] PreviewAccessRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Password))
-            return BadRequest(new { error = "Name and password are required." });
+        if (string.IsNullOrWhiteSpace(request.Password))
+            return BadRequest(new { error = "Password is required." });
 
         var result = await previewService.AccessAsync(token, request);
         return result.Status switch
@@ -68,8 +64,8 @@ public class PostPreviewAccessController(IPostPreviewService previewService) : C
     [EnableRateLimiting("login")]
     public async Task<IActionResult> GetComments(string token, [FromBody] PreviewAccessRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Password))
-            return BadRequest(new { error = "Name and password are required." });
+        if (string.IsNullOrWhiteSpace(request.Password))
+            return BadRequest(new { error = "Password is required." });
 
         var result = await previewService.GetCommentsAsync(token, request);
         return result.Status switch
@@ -85,8 +81,8 @@ public class PostPreviewAccessController(IPostPreviewService previewService) : C
     [EnableRateLimiting("write")]
     public async Task<IActionResult> AddComment(string token, [FromBody] CreateCommentRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Password))
-            return BadRequest(new { error = "Name and password are required." });
+        if (string.IsNullOrWhiteSpace(request.Password))
+            return BadRequest(new { error = "Password is required." });
         if (string.IsNullOrWhiteSpace(request.Body))
             return BadRequest(new { error = "Comment body is required." });
         if (request.Body.Length > 5000)

@@ -22,7 +22,7 @@ public class PostPreviewService(AppDbContext db, ILogger<PostPreviewService> log
         {
             PostId = postId,
             Token = Guid.NewGuid().ToString("N"),
-            Name = request.Name,
+            Name = "",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password, workFactor: 12),
             CreatedAt = DateTime.UtcNow
         };
@@ -45,13 +45,13 @@ public class PostPreviewService(AppDbContext db, ILogger<PostPreviewService> log
         if (preview is null)
             return ServiceResult<PostDetailResponse>.NotFound("Preview not found.");
 
-        if (!VerifyCredentials(preview, request.Name, request.Password))
+        if (!VerifyCredentials(preview, request.Password))
         {
-            logger.LogWarning("Failed preview access attempt for token {Token} by name {Name}", token, request.Name);
+            logger.LogWarning("Failed preview access attempt for token {Token}", token);
             return ServiceResult<PostDetailResponse>.Forbidden("Invalid credentials.");
         }
 
-        logger.LogInformation("Preview accessed for token {Token} by {Name}", token, request.Name);
+        logger.LogInformation("Preview accessed for token {Token}", token);
         var post = preview.Post;
         if (post is null)
             return ServiceResult<PostDetailResponse>.NotFound("The post associated with this preview no longer exists.");
@@ -67,9 +67,9 @@ public class PostPreviewService(AppDbContext db, ILogger<PostPreviewService> log
         if (preview is null)
             return ServiceResult<CommentResponse>.NotFound("Preview not found.");
 
-        if (!VerifyCredentials(preview, request.Name, request.Password))
+        if (!VerifyCredentials(preview, request.Password))
         {
-            logger.LogWarning("Failed comment attempt for token {Token} by name {Name}", token, request.Name);
+            logger.LogWarning("Failed comment attempt for token {Token}", token);
             return ServiceResult<CommentResponse>.Forbidden("Invalid credentials.");
         }
 
@@ -90,9 +90,9 @@ public class PostPreviewService(AppDbContext db, ILogger<PostPreviewService> log
         if (preview is null)
             return ServiceResult<IEnumerable<CommentResponse>>.NotFound("Preview not found.");
 
-        if (!VerifyCredentials(preview, request.Name, request.Password))
+        if (!VerifyCredentials(preview, request.Password))
         {
-            logger.LogWarning("Failed comments list attempt for token {Token} by name {Name}", token, request.Name);
+            logger.LogWarning("Failed comments list attempt for token {Token}", token);
             return ServiceResult<IEnumerable<CommentResponse>>.Forbidden("Invalid credentials.");
         }
 
@@ -106,10 +106,9 @@ public class PostPreviewService(AppDbContext db, ILogger<PostPreviewService> log
     }
 
     // Always verify both fields to avoid timing side-channel leaking which field was wrong
-    private static bool VerifyCredentials(PostPreview preview, string name, string password) =>
-        string.Equals(preview.Name, name, StringComparison.OrdinalIgnoreCase) &
+    private static bool VerifyCredentials(PostPreview preview, string password) =>
         BCrypt.Net.BCrypt.Verify(password, preview.PasswordHash);
 
     private static PreviewResponse ToResponse(PostPreview pp) =>
-        new(pp.Id, pp.Token, pp.Name, pp.CreatedAt);
+        new(pp.Id, pp.Token, pp.CreatedAt);
 }
