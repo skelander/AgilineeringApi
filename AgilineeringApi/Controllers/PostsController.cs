@@ -19,6 +19,8 @@ public class PostsController(IPostsService postsService, ILogger<PostsController
     {
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 50);
+        if (tag is not null && !SlugValidator.IsValid(tag))
+            return BadRequest(new { error = "Tag must contain only lowercase letters, numbers, and hyphens." });
         var isAdmin = User.IsInRole("admin");
         return Ok(await postsService.GetAllAsync(includeUnpublished: isAdmin, page: page, pageSize: pageSize, tag: tag));
     }
@@ -49,7 +51,7 @@ public class PostsController(IPostsService postsService, ILogger<PostsController
 
         var result = await postsService.CreateAsync(request, authorId);
         if (result.Status == ServiceResultStatus.Ok)
-            logger.LogInformation("Admin {User} created post {Slug}", User.Identity?.Name, result.Value!.Slug);
+            logger.LogInformation("Admin {User} created post {Slug}", User.Identity?.Name ?? "unknown", result.Value!.Slug);
         return result.Status switch
         {
             ServiceResultStatus.Ok => CreatedAtAction(nameof(GetBySlug), new { slug = result.Value!.Slug }, result.Value),
@@ -69,7 +71,7 @@ public class PostsController(IPostsService postsService, ILogger<PostsController
 
         var result = await postsService.UpdateAsync(id, request);
         if (result.Status == ServiceResultStatus.Ok)
-            logger.LogInformation("Admin {User} updated post {PostId}", User.Identity?.Name, id);
+            logger.LogInformation("Admin {User} updated post {PostId}", User.Identity?.Name ?? "unknown", id);
         return result.Status switch
         {
             ServiceResultStatus.Ok => Ok(result.Value),
@@ -87,7 +89,7 @@ public class PostsController(IPostsService postsService, ILogger<PostsController
     {
         var result = await postsService.DeleteAsync(id);
         if (result.Status == ServiceResultStatus.Ok)
-            logger.LogInformation("Admin {User} deleted post {PostId}", User.Identity?.Name, id);
+            logger.LogInformation("Admin {User} deleted post {PostId}", User.Identity?.Name ?? "unknown", id);
         return result.Status switch
         {
             ServiceResultStatus.Ok => NoContent(),
