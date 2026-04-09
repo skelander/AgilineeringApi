@@ -3,7 +3,6 @@ using AgilineeringApi.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace AgilineeringApi.Controllers;
@@ -60,30 +59,15 @@ public class ImagesController(AppDbContext db, ILogger<ImagesController> logger)
         if (safeFilename != filename)
             return BadRequest(new { error = "Invalid filename." });
 
-        // Read metadata first (no blob load), then stream blob separately
-        var meta = await db.Images
+        var image = await db.Images
             .Where(i => i.Filename == safeFilename)
-            .Select(i => new { i.ContentType })
+            .Select(i => new { i.ContentType, i.Data })
             .FirstOrDefaultAsync();
-        if (meta is null)
-            return NotFound();
-
-        var conn = db.Database.GetDbConnection();
-        await conn.OpenAsync();
-        await using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT Data FROM Images WHERE Filename = @filename";
-        var param = cmd.CreateParameter();
-        param.ParameterName = "@filename";
-        param.Value = safeFilename;
-        cmd.Parameters.Add(param);
-
-        await using var reader = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.SequentialAccess);
-        if (!await reader.ReadAsync())
+        if (image is null)
             return NotFound();
 
         Response.Headers["Cache-Control"] = "public, max-age=31536000, immutable";
-        var blobStream = reader.GetStream(0);
-        return File(blobStream, meta.ContentType);
+        return File(image.Data, image.ContentType);
     }
 
     [HttpDelete("{filename}")]
@@ -120,12 +104,12 @@ public class ImagesController(AppDbContext db, ILogger<ImagesController> logger)
         if (!AllowedExtensions.Contains(ext))
             return BadRequest(new { error = "Only jpg, jpeg, png, gif, and webp images are allowed." });
 
-        if (!await HasValidMagicBytesAsync(file, ext))
-            return BadRequest(new { error = "File contents do not match the declared image type." });
-
         using var ms = new MemoryStream();
         await file.CopyToAsync(ms);
         var data = ms.ToArray();
+
+        if (!HasValidMagicBytes(data, ext))
+            return BadRequest(new { error = "File contents do not match the declared image type." });
 
         var filename = $"{Guid.NewGuid():N}{ext}";
         var image = new Image
@@ -144,35 +128,21 @@ public class ImagesController(AppDbContext db, ILogger<ImagesController> logger)
         return Created($"/images/{filename}", new { url = $"/images/{filename}" });
     }
 
-    private static async Task<bool> HasValidMagicBytesAsync(IFormFile file, string ext)
+    private static bool HasValidMagicBytes(byte[] data, string ext)
     {
         if (!MagicBytes.TryGetValue(ext, out var checks))
             return false;
 
-        var bufSize = checks.Max(c => c.Offset + c.Item2.Length);
-        var header = new byte[bufSize];
-        var stream = file.OpenReadStream();
-        await using (stream.ConfigureAwait(false))
-        {
-            var read = 0;
-            while (read < bufSize)
-            {
-                var n = await stream.ReadAsync(header.AsMemory(read, bufSize - read)).ConfigureAwait(false);
-                if (n == 0) break;
-                read += n;
-            }
+        bool MatchesAll() => checks.All(c =>
+            data.Length >= c.Offset + c.Item2.Length &&
+            data.AsSpan(c.Offset, c.Item2.Length).SequenceEqual(c.Item2));
 
-            bool MatchesAll() => checks.All(c =>
-                read >= c.Offset + c.Item2.Length &&
-                header.AsSpan(c.Offset, c.Item2.Length).SequenceEqual(c.Item2));
+        var hasAlternatives = checks.Length > 1 && checks.All(c => c.Offset == 0);
+        if (hasAlternatives)
+            return checks.Any(c =>
+                data.Length >= c.Item2.Length &&
+                data.AsSpan(0, c.Item2.Length).SequenceEqual(c.Item2));
 
-            var hasAlternatives = checks.Length > 1 && checks.All(c => c.Offset == 0);
-            if (hasAlternatives)
-                return checks.Any(c =>
-                    read >= c.Item2.Length &&
-                    header.AsSpan(0, c.Item2.Length).SequenceEqual(c.Item2));
-
-            return MatchesAll();
-        }
+        return MatchesAll();
     }
 }
