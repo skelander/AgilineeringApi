@@ -6,7 +6,6 @@ primary_region = "arn"
 [env]
   ASPNETCORE_ENVIRONMENT = "Production"
   ConnectionStrings__DefaultConnection = "Data Source=/data/agilineering.db"
-  Storage__ImagesPath = "/data/images"
   Cors__Origins__0 = "https://skelander.github.io"
   Cors__Origins__1 = "https://agilineering.com"
   Site__BaseUrl = "https://agilineering.com"

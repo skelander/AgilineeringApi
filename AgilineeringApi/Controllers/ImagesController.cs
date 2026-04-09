@@ -3,6 +3,7 @@ using AgilineeringApi.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace AgilineeringApi.Controllers;
@@ -59,12 +60,30 @@ public class ImagesController(AppDbContext db, ILogger<ImagesController> logger)
         if (safeFilename != filename)
             return BadRequest(new { error = "Invalid filename." });
 
-        var image = await db.Images.FirstOrDefaultAsync(i => i.Filename == safeFilename);
-        if (image is null)
+        // Read metadata first (no blob load), then stream blob separately
+        var meta = await db.Images
+            .Where(i => i.Filename == safeFilename)
+            .Select(i => new { i.ContentType })
+            .FirstOrDefaultAsync();
+        if (meta is null)
+            return NotFound();
+
+        var conn = db.Database.GetDbConnection();
+        await conn.OpenAsync();
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT Data FROM Images WHERE Filename = @filename";
+        var param = cmd.CreateParameter();
+        param.ParameterName = "@filename";
+        param.Value = safeFilename;
+        cmd.Parameters.Add(param);
+
+        await using var reader = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.SequentialAccess);
+        if (!await reader.ReadAsync())
             return NotFound();
 
         Response.Headers["Cache-Control"] = "public, max-age=31536000, immutable";
-        return File(image.Data, image.ContentType);
+        var blobStream = reader.GetStream(0);
+        return File(blobStream, meta.ContentType);
     }
 
     [HttpDelete("{filename}")]
