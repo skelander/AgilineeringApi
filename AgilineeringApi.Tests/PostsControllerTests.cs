@@ -36,7 +36,7 @@ public class PostsControllerTests : IClassFixture<AgilineeringFactory>
         await _client.AuthenticateAsync();
         await _client.PostAsJsonAsync("/posts", new CreatePostRequest("Admin Draft", "Body", "admin-draft", false, []));
 
-        var result = await _client.GetFromJsonAsync<PagedResult<PostSummaryResponse>>("/posts?pageSize=50");
+        var result = await _client.GetFromJsonAsync<PagedResult<PostSummaryResponse>>("/posts?pageSize=50&includeUnpublished=true");
         var posts = result?.Items.ToList();
         Assert.NotNull(posts);
         Assert.Contains(posts, p => p.Slug == "admin-draft");
