@@ -16,14 +16,15 @@ public class PostsController(IPostsService postsService, ILogger<PostsController
     public async Task<IActionResult> GetAll(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
-        [FromQuery] string? tag = null)
+        [FromQuery] string? tag = null,
+        [FromQuery] bool includeUnpublished = false)
     {
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 50);
         if (tag is not null && !SlugValidator.IsValid(tag))
             return BadRequest(new { error = "Tag must contain only lowercase letters, numbers, and hyphens." });
-        var isAdmin = User.IsInRole("admin");
-        return Ok(await postsService.GetAllAsync(includeUnpublished: isAdmin, page: page, pageSize: pageSize, tag: tag));
+        var showUnpublished = includeUnpublished && User.IsInRole("admin");
+        return Ok(await postsService.GetAllAsync(includeUnpublished: showUnpublished, page: page, pageSize: pageSize, tag: tag));
     }
 
     [HttpGet("{slug}")]
