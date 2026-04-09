@@ -150,17 +150,6 @@ app.Use(async (context, next) =>
     await next();
 });
 
-var imagesPath = app.Configuration["Storage:ImagesPath"] ?? "images";
-var imagesDir = Path.IsPathRooted(imagesPath)
-    ? imagesPath
-    : Path.Combine(app.Environment.ContentRootPath, imagesPath);
-Directory.CreateDirectory(imagesDir);
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(imagesDir),
-    RequestPath = "/images"
-});
-
 app.UseResponseCaching();
 app.UseRateLimiter();
 app.UseAuthentication();
@@ -201,6 +190,19 @@ static void ApplySchemaChanges(AppDbContext db, ILogger logger)
         )
         """);
     db.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS IX_PreviewComments_PreviewId ON PreviewComments(PreviewId)");
+
+    // Images table — stores image blobs in DB instead of on disk
+    db.Database.ExecuteSqlRaw("""
+        CREATE TABLE IF NOT EXISTS Images (
+            Id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+            Filename TEXT NOT NULL,
+            ContentType TEXT NOT NULL,
+            Data BLOB NOT NULL,
+            Size INTEGER NOT NULL,
+            CreatedAt TEXT NOT NULL
+        )
+        """);
+    db.Database.ExecuteSqlRaw("CREATE UNIQUE INDEX IF NOT EXISTS IX_Images_Filename ON Images(Filename)");
 
     // WAL mode — allows concurrent reads during writes (persistent, no-op on :memory:)
     db.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL");

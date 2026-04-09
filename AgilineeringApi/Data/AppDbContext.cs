@@ -10,6 +10,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Tag> Tags => Set<Tag>();
     public DbSet<PostPreview> PostPreviews => Set<PostPreview>();
     public DbSet<PreviewComment> PreviewComments => Set<PreviewComment>();
+    public DbSet<Image> Images => Set<Image>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -55,6 +56,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .WithMany()
                 .HasForeignKey(c => c.PreviewId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Image>(entity =>
+        {
+            entity.HasIndex(i => i.Filename).IsUnique();
+            entity.Property(i => i.Filename).HasMaxLength(260);
+            entity.Property(i => i.ContentType).HasMaxLength(100);
         });
 
         modelBuilder.Entity<PostPreview>(entity =>

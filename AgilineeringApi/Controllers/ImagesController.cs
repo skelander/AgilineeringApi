@@ -1,74 +1,88 @@
+using AgilineeringApi.Data;
+using AgilineeringApi.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 
 namespace AgilineeringApi.Controllers;
 
 [ApiController]
 [Route("images")]
-public class ImagesController(IConfiguration configuration, IWebHostEnvironment env, ILogger<ImagesController> logger) : ControllerBase
+public class ImagesController(AppDbContext db, ILogger<ImagesController> logger) : ControllerBase
 {
     private static readonly HashSet<string> AllowedExtensions = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
     private static readonly long MaxFileSizeBytes = 10 * 1024 * 1024; // 10 MB
 
-    // Magic bytes for each allowed image format: (offset, signature)
     private static readonly Dictionary<string, (int Offset, byte[])[]> MagicBytes = new()
     {
         [".jpg"]  = [(0, [0xFF, 0xD8, 0xFF])],
         [".jpeg"] = [(0, [0xFF, 0xD8, 0xFF])],
         [".png"]  = [(0, [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])],
         [".gif"]  = [(0, [0x47, 0x49, 0x46, 0x38, 0x37, 0x61]), (0, [0x47, 0x49, 0x46, 0x38, 0x39, 0x61])],
-        // WEBP: bytes 0-3 = "RIFF", bytes 8-11 = "WEBP"
         [".webp"] = [(0, [0x52, 0x49, 0x46, 0x46]), (8, [0x57, 0x45, 0x42, 0x50])],
+    };
+
+    private static readonly Dictionary<string, string> ContentTypes = new()
+    {
+        [".jpg"]  = "image/jpeg",
+        [".jpeg"] = "image/jpeg",
+        [".png"]  = "image/png",
+        [".gif"]  = "image/gif",
+        [".webp"] = "image/webp",
     };
 
     [HttpGet]
     [Authorize(Roles = "admin")]
     [EnableRateLimiting("read")]
-    public IActionResult List()
+    public async Task<IActionResult> List()
     {
-        var dir = GetImagesDir();
-        if (!Directory.Exists(dir))
-            return Ok(Array.Empty<object>());
-
-        var images = Directory.GetFiles(dir)
-            .Where(f => AllowedExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
-            .Select(f =>
+        var images = await db.Images
+            .OrderByDescending(i => i.CreatedAt)
+            .Select(i => new
             {
-                var info = new FileInfo(f);
-                return new
-                {
-                    filename = info.Name,
-                    url = $"/images/{info.Name}",
-                    size = info.Length,
-                    createdAt = info.CreationTimeUtc,
-                };
+                filename = i.Filename,
+                url = $"/images/{i.Filename}",
+                size = i.Size,
+                createdAt = i.CreatedAt,
             })
-            .OrderByDescending(x => x.createdAt)
-            .ToList();
+            .ToListAsync();
 
         return Ok(images);
     }
 
-    [HttpDelete("{filename}")]
-    [Authorize(Roles = "admin")]
-    [EnableRateLimiting("write")]
-    public IActionResult Delete(string filename)
+    [HttpGet("{filename}")]
+    [EnableRateLimiting("read")]
+    public async Task<IActionResult> Serve(string filename)
     {
         var safeFilename = Path.GetFileName(filename);
         if (safeFilename != filename)
             return BadRequest(new { error = "Invalid filename." });
 
-        var ext = Path.GetExtension(safeFilename).ToLowerInvariant();
-        if (!AllowedExtensions.Contains(ext))
-            return BadRequest(new { error = "Invalid file type." });
+        var image = await db.Images.FirstOrDefaultAsync(i => i.Filename == safeFilename);
+        if (image is null)
+            return NotFound();
 
-        var fullPath = Path.Combine(GetImagesDir(), safeFilename);
-        if (!System.IO.File.Exists(fullPath))
+        Response.Headers["Cache-Control"] = "public, max-age=31536000, immutable";
+        return File(image.Data, image.ContentType);
+    }
+
+    [HttpDelete("{filename}")]
+    [Authorize(Roles = "admin")]
+    [EnableRateLimiting("write")]
+    public async Task<IActionResult> Delete(string filename)
+    {
+        var safeFilename = Path.GetFileName(filename);
+        if (safeFilename != filename)
+            return BadRequest(new { error = "Invalid filename." });
+
+        var image = await db.Images.FirstOrDefaultAsync(i => i.Filename == safeFilename);
+        if (image is null)
             return NotFound(new { error = "Image not found." });
 
-        System.IO.File.Delete(fullPath);
-        logger.LogInformation("Admin {User} deleted image {FileName}", User.Identity?.Name ?? "unknown", safeFilename);
+        db.Images.Remove(image);
+        await db.SaveChangesAsync();
+        logger.LogInformation("Admin {User} deleted image {Filename}", User.Identity?.Name ?? "unknown", safeFilename);
         return NoContent();
     }
 
@@ -90,35 +104,25 @@ public class ImagesController(IConfiguration configuration, IWebHostEnvironment 
         if (!await HasValidMagicBytesAsync(file, ext))
             return BadRequest(new { error = "File contents do not match the declared image type." });
 
-        var dir = GetImagesDir();
-        Directory.CreateDirectory(dir);
+        using var ms = new MemoryStream();
+        await file.CopyToAsync(ms);
+        var data = ms.ToArray();
 
-        var fileName = $"{Guid.NewGuid():N}{ext}";
-        var fullPath = Path.Combine(dir, fileName);
-
-        try
+        var filename = $"{Guid.NewGuid():N}{ext}";
+        var image = new Image
         {
-            await using var stream = System.IO.File.Create(fullPath);
-            await file.CopyToAsync(stream);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to save uploaded image {FileName}", fileName);
-            try { System.IO.File.Delete(fullPath); } catch (Exception cleanupEx) { logger.LogWarning(cleanupEx, "Failed to clean up partial upload {FileName}", fileName); }
-            throw;
-        }
+            Filename = filename,
+            ContentType = ContentTypes[ext],
+            Data = data,
+            Size = data.Length,
+            CreatedAt = DateTime.UtcNow,
+        };
 
-        logger.LogInformation("Admin {User} uploaded image {FileName}", User.Identity?.Name ?? "unknown", fileName);
+        db.Images.Add(image);
+        await db.SaveChangesAsync();
 
-        return Created($"/images/{fileName}", new { url = $"/images/{fileName}" });
-    }
-
-    private string GetImagesDir()
-    {
-        var imagesPath = configuration["Storage:ImagesPath"] ?? "images";
-        return Path.IsPathRooted(imagesPath)
-            ? imagesPath
-            : Path.Combine(env.ContentRootPath, imagesPath);
+        logger.LogInformation("Admin {User} uploaded image {Filename}", User.Identity?.Name ?? "unknown", filename);
+        return Created($"/images/{filename}", new { url = $"/images/{filename}" });
     }
 
     private static async Task<bool> HasValidMagicBytesAsync(IFormFile file, string ext)
@@ -126,9 +130,6 @@ public class ImagesController(IConfiguration configuration, IWebHostEnvironment 
         if (!MagicBytes.TryGetValue(ext, out var checks))
             return false;
 
-        // For formats with multiple alternatives (e.g. GIF87a/GIF89a), each entry is one alternative.
-        // For formats requiring multiple markers at different offsets (e.g. WEBP = RIFF + WEBP),
-        // all checks for that extension must pass.
         var bufSize = checks.Max(c => c.Offset + c.Item2.Length);
         var header = new byte[bufSize];
         var stream = file.OpenReadStream();
@@ -142,13 +143,10 @@ public class ImagesController(IConfiguration configuration, IWebHostEnvironment 
                 read += n;
             }
 
-            // Group checks by whether the format has alternatives (offset 0 only)
-            // vs. required multi-marker validation (WEBP: all checks must pass)
             bool MatchesAll() => checks.All(c =>
                 read >= c.Offset + c.Item2.Length &&
                 header.AsSpan(c.Offset, c.Item2.Length).SequenceEqual(c.Item2));
 
-            // For single-offset formats with alternatives, any match suffices
             var hasAlternatives = checks.Length > 1 && checks.All(c => c.Offset == 0);
             if (hasAlternatives)
                 return checks.Any(c =>
