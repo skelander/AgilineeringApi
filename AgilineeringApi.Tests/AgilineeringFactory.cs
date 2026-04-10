@@ -11,7 +11,6 @@ namespace AgilineeringApi.Tests;
 public class AgilineeringFactory : WebApplicationFactory<Program>
 {
     private readonly DbConnection _connection;
-    private readonly string _imagesDir = Path.Combine(Path.GetTempPath(), $"agilineering-test-{Guid.NewGuid():N}");
 
     public AgilineeringFactory()
     {
@@ -41,7 +40,6 @@ public class AgilineeringFactory : WebApplicationFactory<Program>
         builder.UseSetting("Security:WriteRateLimit", "1000");
         builder.UseSetting("Security:MaxFailedLoginAttempts", "3");
         builder.UseSetting("Security:LockoutDurationMinutes", "15");
-        builder.UseSetting("Storage:ImagesPath", _imagesDir);
         builder.UseSetting("AdminKey", "test-admin-key");
         builder.UseSetting("Seed:AdminPassword", "admin");
     }
@@ -58,7 +56,6 @@ public class AgilineeringFactory : WebApplicationFactory<Program>
         if (disposing)
         {
             _connection.Dispose();
-            try { Directory.Delete(_imagesDir, recursive: true); } catch { }
         }
     }
 }
