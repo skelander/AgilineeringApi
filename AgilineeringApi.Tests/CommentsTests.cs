@@ -56,12 +56,12 @@ public class CommentsTests : IClassFixture<AgilineeringFactory>
     }
 
     [Fact]
-    public async Task AddComment_NonExistentToken_Returns404()
+    public async Task AddComment_NonExistentToken_Returns401()
     {
         var response = await _client.PostAsJsonAsync("/posts/preview/doesnotexist/comments",
             new CreateCommentRequest("secret123", "Great post!"));
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Theory]
@@ -141,12 +141,12 @@ public class CommentsTests : IClassFixture<AgilineeringFactory>
     }
 
     [Fact]
-    public async Task GetComments_NonExistentToken_Returns404()
+    public async Task GetComments_NonExistentToken_Returns401()
     {
         var response = await _client.PostAsJsonAsync("/posts/preview/doesnotexist/comments/list",
             new PreviewAccessRequest("secret123"));
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Theory]
