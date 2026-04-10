@@ -60,6 +60,14 @@ public class TagsControllerTests : IClassFixture<AgilineeringFactory>
     }
 
     [Fact]
+    public async Task Delete_Unauthenticated_Returns401()
+    {
+        await _client.LogoutAsync();
+        var response = await _client.DeleteAsync("/tags/1");
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Delete_NotFound_Returns404()
     {
         await _client.AuthenticateAsync();

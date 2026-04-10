@@ -205,11 +205,86 @@ public class PostsControllerTests : IClassFixture<AgilineeringFactory>
     }
 
     [Fact]
+    public async Task Update_Unauthenticated_Returns401()
+    {
+        await _client.LogoutAsync();
+        var response = await _client.PutAsJsonAsync("/posts/1",
+            new UpdatePostRequest("Title", "Content", "some-slug", true, []));
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Update_NotFound_Returns404()
+    {
+        await _client.AuthenticateAsync();
+        var response = await _client.PutAsJsonAsync("/posts/99999",
+            new UpdatePostRequest("Title", "Content", "nonexistent-slug", true, []));
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Delete_Unauthenticated_Returns401()
+    {
+        await _client.LogoutAsync();
+        var response = await _client.DeleteAsync("/posts/1");
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetBySlug_DraftPost_AsAdmin_Returns200()
+    {
+        await _client.AuthenticateAsync();
+        await _client.PostAsJsonAsync("/posts", new CreatePostRequest("Admin Only Draft", "Body", "admin-only-draft", false, []));
+
+        var response = await _client.GetAsync("/posts/admin-only-draft");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var post = await response.Content.ReadFromJsonAsync<PostDetailResponse>();
+        Assert.NotNull(post);
+        Assert.False(post!.Published);
+    }
+
+    [Fact]
+    public async Task Create_ResponseContainsExpectedFields()
+    {
+        await _client.AuthenticateAsync();
+        var response = await _client.PostAsJsonAsync("/posts",
+            new CreatePostRequest("Structured Post", "Body content", "structured-post", true, []));
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var post = await response.Content.ReadFromJsonAsync<PostDetailResponse>();
+        Assert.NotNull(post);
+        Assert.True(post!.Id > 0);
+        Assert.Equal("Structured Post", post.Title);
+        Assert.Equal("structured-post", post.Slug);
+        Assert.Equal("Body content", post.Content);
+        Assert.True(post.Published);
+        Assert.Equal("admin", post.AuthorUsername);
+        Assert.NotNull(post.Tags);
+        Assert.NotEqual(default, post.CreatedAt);
+    }
+
+    [Fact]
     public async Task GetAll_PageZero_TreatsAsPageOne()
     {
         var result = await _client.GetFromJsonAsync<PagedResult<PostSummaryResponse>>("/posts?page=0");
         Assert.NotNull(result);
         Assert.Equal(1, result!.Page);
+    }
+
+    [Fact]
+    public async Task GetAll_NegativePage_TreatsAsPageOne()
+    {
+        var result = await _client.GetFromJsonAsync<PagedResult<PostSummaryResponse>>("/posts?page=-5");
+        Assert.NotNull(result);
+        Assert.Equal(1, result!.Page);
+    }
+
+    [Fact]
+    public async Task GetAll_NegativePageSize_UsesMinimumOfOne()
+    {
+        var result = await _client.GetFromJsonAsync<PagedResult<PostSummaryResponse>>("/posts?pageSize=-10");
+        Assert.NotNull(result);
+        Assert.Equal(1, result!.PageSize);
     }
 
     [Fact]

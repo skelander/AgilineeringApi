@@ -124,4 +124,31 @@ public class SitemapRssTests : IClassFixture<AgilineeringFactory>
         Assert.Contains("<link>", body);
         Assert.Contains("<description>", body);
     }
+
+    [Fact]
+    public async Task Rss_ItemsHaveRequiredElements()
+    {
+        await _client.AuthenticateAsync();
+        var slug = $"rss-item-structure-{Guid.NewGuid():N}";
+        await _client.PostAsJsonAsync("/posts",
+            new CreatePostRequest("RSS Item Test", "Body", slug, true, []));
+        await _client.LogoutAsync();
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/rss.xml");
+        request.Headers.CacheControl = new System.Net.Http.Headers.CacheControlHeaderValue { NoCache = true };
+        var response = await _client.SendAsync(request);
+        var body = await response.Content.ReadAsStringAsync();
+
+        var doc = System.Xml.Linq.XDocument.Parse(body);
+        var items = doc.Descendants("item").ToList();
+        Assert.NotEmpty(items);
+
+        var item = items.First(i => i.Element("link")?.Value.Contains(slug) == true
+                                  || i.Element("guid")?.Value.Contains(slug) == true
+                                  || i.Element("title")?.Value == "RSS Item Test");
+        Assert.NotNull(item.Element("title"));
+        Assert.NotNull(item.Element("link"));
+        Assert.NotNull(item.Element("guid"));
+        Assert.NotNull(item.Element("pubDate"));
+    }
 }

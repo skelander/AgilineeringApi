@@ -131,6 +131,28 @@ public class ImagesListServeDeleteTests : IClassFixture<AgilineeringFactory>
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    [Theory]
+    [InlineData("../secrets.txt")]
+    [InlineData("../../etc/passwd")]
+    [InlineData("..%2F..%2Fetc%2Fpasswd")]
+    public async Task Serve_DirectoryTraversalFilename_IsBlocked(string filename)
+    {
+        // Path traversal attempts are neutralised either at URL-normalisation (→ 404)
+        // or by the controller's safeFilename check (→ 400). Either way, never 200.
+        var response = await _client.GetAsync($"/images/{filename}");
+        Assert.NotEqual(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("../secrets.txt")]
+    [InlineData("..%2F..%2Fetc%2Fpasswd")]
+    public async Task Delete_DirectoryTraversalFilename_IsBlocked(string filename)
+    {
+        await _client.AuthenticateAsync();
+        var response = await _client.DeleteAsync($"/images/{filename}");
+        Assert.NotEqual(HttpStatusCode.OK, response.StatusCode);
+    }
+
     [Fact]
     public async Task Upload_FileSizeLimit_Returns400()
     {

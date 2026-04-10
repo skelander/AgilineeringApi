@@ -98,6 +98,27 @@ app.Use(async (context, next) =>
 });
 
 app.UseCors();
+
+// Unhandled exceptions: runs after UseCors so CORS headers are already set on the response.
+// Without this, Kestrel resets the response on exception and strips the CORS headers,
+// causing the browser to see a network error instead of a proper HTTP error.
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError(ex, "Unhandled exception");
+        if (!context.Response.HasStarted)
+        {
+            context.Response.StatusCode = 500;
+            await context.Response.WriteAsJsonAsync(new { error = "An unexpected error occurred." });
+        }
+    }
+});
+
 app.UseMiddleware<AdminKeyMiddleware>();
 
 app.UseResponseCaching();
