@@ -8,7 +8,7 @@ namespace AgilineeringApi.Controllers;
 
 [ApiController]
 [Route("tags")]
-public class TagsController(ITagsService tagsService) : ControllerBase
+public class TagsController(ITagsService tagsService, ILogger<TagsController> logger) : ControllerBase
 {
     [HttpGet]
     [EnableRateLimiting("read")]
@@ -21,7 +21,9 @@ public class TagsController(ITagsService tagsService) : ControllerBase
     public async Task<IActionResult> Create([FromBody] CreateTagRequest request)
     {
         var result = await tagsService.CreateAsync(request);
-        return result.ToActionResult(this, value => StatusCode(201, value));
+        if (result.Status == ServiceResultStatus.Ok)
+            logger.LogInformation("Admin {User} created tag {Slug}", User.Identity?.Name ?? "unknown", result.Value!.Slug);
+        return result.ToActionResult(this, value => Created($"/tags", value));
     }
 
     [HttpDelete("{id:int}")]
@@ -30,6 +32,8 @@ public class TagsController(ITagsService tagsService) : ControllerBase
     public async Task<IActionResult> Delete(int id)
     {
         var result = await tagsService.DeleteAsync(id);
+        if (result.Status == ServiceResultStatus.Ok)
+            logger.LogInformation("Admin {User} deleted tag {TagId}", User.Identity?.Name ?? "unknown", id);
         return result.ToActionResult(this, NoContent());
     }
 }

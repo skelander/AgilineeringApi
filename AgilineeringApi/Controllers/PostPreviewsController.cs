@@ -44,6 +44,8 @@ public class PostPreviewAccessController(IPostPreviewService previewService) : C
     {
         if (string.IsNullOrWhiteSpace(request.Password))
             return BadRequest(new { error = "Password is required." });
+        if (request.Password.Length < 6)
+            return BadRequest(new { error = "Password must be at least 6 characters." });
         if (request.Password.Length > SecurityConstants.MaxPasswordLength)
             return BadRequest(new { error = $"Password must be {SecurityConstants.MaxPasswordLength} characters or fewer." });
 
@@ -65,6 +67,8 @@ public class PostPreviewAccessController(IPostPreviewService previewService) : C
     {
         if (string.IsNullOrWhiteSpace(request.Password))
             return BadRequest(new { error = "Password is required." });
+        if (request.Password.Length < 6)
+            return BadRequest(new { error = "Password must be at least 6 characters." });
         if (request.Password.Length > SecurityConstants.MaxPasswordLength)
             return BadRequest(new { error = $"Password must be {SecurityConstants.MaxPasswordLength} characters or fewer." });
 
@@ -86,6 +90,8 @@ public class PostPreviewAccessController(IPostPreviewService previewService) : C
     {
         if (string.IsNullOrWhiteSpace(request.Password))
             return BadRequest(new { error = "Password is required." });
+        if (request.Password.Length < 6)
+            return BadRequest(new { error = "Password must be at least 6 characters." });
         if (request.Password.Length > SecurityConstants.MaxPasswordLength)
             return BadRequest(new { error = $"Password must be {SecurityConstants.MaxPasswordLength} characters or fewer." });
         if (string.IsNullOrWhiteSpace(request.Body))
