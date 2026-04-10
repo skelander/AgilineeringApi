@@ -7,4 +7,5 @@ public interface IPostPreviewService
     Task<ServiceResult<PostDetailResponse>> AccessAsync(string token, PreviewAccessRequest request);
     Task<ServiceResult<CommentResponse>> AddCommentAsync(string token, CreateCommentRequest request);
     Task<ServiceResult<IEnumerable<CommentResponse>>> GetCommentsAsync(string token, PreviewAccessRequest request);
+    Task<IEnumerable<PreviewWithCommentsResponse>> GetAllWithCommentsAsync(int postId);
 }

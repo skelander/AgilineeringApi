@@ -112,6 +112,27 @@ public class PostPreviewService(AppDbContext db, ILogger<PostPreviewService> log
         return ServiceResult<IEnumerable<CommentResponse>>.Ok(comments);
     }
 
+    public async Task<IEnumerable<PreviewWithCommentsResponse>> GetAllWithCommentsAsync(int postId)
+    {
+        var previews = await db.PostPreviews
+            .AsNoTracking()
+            .Where(pp => pp.PostId == postId)
+            .OrderByDescending(pp => pp.CreatedAt)
+            .Select(pp => new
+            {
+                pp.Id, pp.Token, pp.CreatedAt,
+                Comments = db.PreviewComments
+                    .Where(c => c.PreviewId == pp.Id)
+                    .OrderBy(c => c.CreatedAt)
+                    .Select(c => new CommentResponse(c.Id, c.Body, c.CreatedAt))
+                    .ToList()
+            })
+            .ToListAsync();
+
+        return previews.Select(pp =>
+            new PreviewWithCommentsResponse(pp.Id, pp.Token, pp.CreatedAt, pp.Comments));
+    }
+
     private static bool VerifyCredentials(PostPreview preview, string password) =>
         BCrypt.Net.BCrypt.Verify(password, preview.PasswordHash);
 

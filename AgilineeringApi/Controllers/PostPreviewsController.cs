@@ -10,6 +10,11 @@ namespace AgilineeringApi.Controllers;
 [Route("posts/{postId:int}/previews")]
 public class PostPreviewsController(IPostPreviewService previewService) : ControllerBase
 {
+    [HttpGet]
+    [Authorize(Roles = "admin")]
+    public async Task<IActionResult> GetAll(int postId) =>
+        Ok(await previewService.GetAllWithCommentsAsync(postId));
+
     [HttpPost]
     [Authorize(Roles = "admin")]
     public async Task<IActionResult> Create(int postId, [FromBody] CreatePreviewRequest request)
