@@ -93,7 +93,7 @@ public class PostPreviewControllerTests : IClassFixture<AgilineeringFactory>
     // --- Check token existence ---
 
     [Fact]
-    public async Task Check_ExistingToken_Returns200()
+    public async Task Check_ExistingToken_Returns204()
     {
         var post = await CreateDraftAsync("check-token-exists");
         var createResp = await _client.PostAsJsonAsync($"/posts/{post.Id}/previews",
@@ -103,7 +103,7 @@ public class PostPreviewControllerTests : IClassFixture<AgilineeringFactory>
 
         var resp = await _client.GetAsync($"/posts/preview/{preview!.Token}");
 
-        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, resp.StatusCode);
     }
 
     [Fact]

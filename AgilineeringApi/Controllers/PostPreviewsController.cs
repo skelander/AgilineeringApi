@@ -33,7 +33,7 @@ public class PostPreviewAccessController(IPostPreviewService previewService) : C
     public async Task<IActionResult> Check(string token)
     {
         var exists = await previewService.TokenExistsAsync(token);
-        return exists ? Ok() : NotFound(new { error = "This preview has been removed. Ask the author for a new link." });
+        return exists ? NoContent() : NotFound(new { error = "This preview has been removed. Ask the author for a new link." });
     }
 
     [HttpPost("{token}/access")]
