@@ -25,6 +25,8 @@ public class AuthController(
     {
         if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
             return BadRequest(new { error = "Username and password are required." });
+        if (request.Password.Length > SecurityConstants.MaxPasswordLength)
+            return BadRequest(new { error = $"Password must be {SecurityConstants.MaxPasswordLength} characters or fewer." });
 
         var result = await authService.LoginAsync(request);
 
@@ -54,6 +56,8 @@ public class AuthController(
             return BadRequest(new { error = "Current password and new password are required." });
         if (request.NewPassword.Length < _security.MinPasswordLength)
             return BadRequest(new { error = $"New password must be at least {_security.MinPasswordLength} characters." });
+        if (request.NewPassword.Length > SecurityConstants.MaxPasswordLength)
+            return BadRequest(new { error = $"New password must be {SecurityConstants.MaxPasswordLength} characters or fewer." });
 
         var userId = User.GetUserId();
         if (userId is null)

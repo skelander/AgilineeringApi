@@ -25,6 +25,7 @@ public class PostsController(IPostsService postsService, ILogger<PostsController
     }
 
     [HttpGet("{slug}")]
+    [EnableRateLimiting("read")]
     public async Task<IActionResult> GetBySlug(string slug)
     {
         var result = await postsService.GetBySlugAsync(slug, includeUnpublished: User.IsInRole("admin"));

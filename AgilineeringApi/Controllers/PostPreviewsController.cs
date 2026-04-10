@@ -18,6 +18,8 @@ public class PostPreviewsController(IPostPreviewService previewService) : Contro
             return BadRequest(new { error = "Password is required." });
         if (request.Password.Length < 6)
             return BadRequest(new { error = "Password must be at least 6 characters." });
+        if (request.Password.Length > SecurityConstants.MaxPasswordLength)
+            return BadRequest(new { error = $"Password must be {SecurityConstants.MaxPasswordLength} characters or fewer." });
 
         var result = await previewService.CreateAsync(postId, request);
         return result.ToActionResult(this, value => StatusCode(201, value));
@@ -42,6 +44,8 @@ public class PostPreviewAccessController(IPostPreviewService previewService) : C
     {
         if (string.IsNullOrWhiteSpace(request.Password))
             return BadRequest(new { error = "Password is required." });
+        if (request.Password.Length > SecurityConstants.MaxPasswordLength)
+            return BadRequest(new { error = $"Password must be {SecurityConstants.MaxPasswordLength} characters or fewer." });
 
         var result = await previewService.AccessAsync(token, request);
         return result.Status switch
@@ -61,13 +65,17 @@ public class PostPreviewAccessController(IPostPreviewService previewService) : C
     {
         if (string.IsNullOrWhiteSpace(request.Password))
             return BadRequest(new { error = "Password is required." });
+        if (request.Password.Length > SecurityConstants.MaxPasswordLength)
+            return BadRequest(new { error = $"Password must be {SecurityConstants.MaxPasswordLength} characters or fewer." });
 
         var result = await previewService.GetCommentsAsync(token, request);
         return result.Status switch
         {
             ServiceResultStatus.Ok => Ok(result.Value),
-            ServiceResultStatus.NotFound => NotFound(new { error = "This preview has been removed. Ask the author for a new link." }),
-            ServiceResultStatus.Forbidden => Unauthorized(new { error = "Invalid credentials." }),
+            // Return the same 401 for both missing token and wrong credentials
+            // to prevent token enumeration via status code differences
+            ServiceResultStatus.NotFound or ServiceResultStatus.Forbidden =>
+                Unauthorized(new { error = "Invalid token or credentials." }),
             _ => StatusCode(500)
         };
     }
@@ -78,6 +86,8 @@ public class PostPreviewAccessController(IPostPreviewService previewService) : C
     {
         if (string.IsNullOrWhiteSpace(request.Password))
             return BadRequest(new { error = "Password is required." });
+        if (request.Password.Length > SecurityConstants.MaxPasswordLength)
+            return BadRequest(new { error = $"Password must be {SecurityConstants.MaxPasswordLength} characters or fewer." });
         if (string.IsNullOrWhiteSpace(request.Body))
             return BadRequest(new { error = "Comment body is required." });
         if (request.Body.Length > 5000)
@@ -87,8 +97,10 @@ public class PostPreviewAccessController(IPostPreviewService previewService) : C
         return result.Status switch
         {
             ServiceResultStatus.Ok => StatusCode(201, result.Value),
-            ServiceResultStatus.NotFound => NotFound(new { error = "This preview has been removed. Ask the author for a new link." }),
-            ServiceResultStatus.Forbidden => Unauthorized(new { error = "Invalid credentials." }),
+            // Return the same 401 for both missing token and wrong credentials
+            // to prevent token enumeration via status code differences
+            ServiceResultStatus.NotFound or ServiceResultStatus.Forbidden =>
+                Unauthorized(new { error = "Invalid token or credentials." }),
             ServiceResultStatus.BadRequest => BadRequest(new { error = result.Error }),
             _ => StatusCode(500)
         };
