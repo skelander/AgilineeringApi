@@ -160,7 +160,7 @@ public class PostPreviewControllerTests : IClassFixture<AgilineeringFactory>
         await _client.LogoutAsync();
 
         var resp = await _client.PostAsJsonAsync($"/posts/preview/{preview!.Token}/access",
-            new PreviewAccessRequest("wrong"));
+            new PreviewAccessRequest("wrongpassword"));
 
         Assert.Equal(HttpStatusCode.Unauthorized, resp.StatusCode);
     }

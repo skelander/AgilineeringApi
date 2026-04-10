@@ -118,19 +118,20 @@ public class PostPreviewService(AppDbContext db, ILogger<PostPreviewService> log
             .AsNoTracking()
             .Where(pp => pp.PostId == postId)
             .OrderByDescending(pp => pp.CreatedAt)
-            .Select(pp => new
-            {
-                pp.Id, pp.Token, pp.CreatedAt,
-                Comments = db.PreviewComments
-                    .Where(c => c.PreviewId == pp.Id)
-                    .OrderBy(c => c.CreatedAt)
-                    .Select(c => new CommentResponse(c.Id, c.Body, c.CreatedAt))
-                    .ToList()
-            })
             .ToListAsync();
 
-        return previews.Select(pp =>
-            new PreviewWithCommentsResponse(pp.Id, pp.Token, pp.CreatedAt, pp.Comments));
+        var previewIds = previews.Select(pp => pp.Id).ToList();
+        var comments = await db.PreviewComments
+            .AsNoTracking()
+            .Where(c => previewIds.Contains(c.PreviewId))
+            .OrderBy(c => c.CreatedAt)
+            .ToListAsync();
+
+        return previews.Select(pp => new PreviewWithCommentsResponse(
+            pp.Id, pp.Token, pp.CreatedAt,
+            comments
+                .Where(c => c.PreviewId == pp.Id)
+                .Select(c => new CommentResponse(c.Id, c.Body, c.CreatedAt))));
     }
 
     private static bool VerifyCredentials(PostPreview preview, string password) =>
