@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AgilineeringApi.Services;
 
-public class PostsService(AppDbContext db) : IPostsService
+public class PostsService(AppDbContext db, ILogger<PostsService> logger) : IPostsService
 {
     private const int MaxTitleLength = 300;
     private const int MaxSlugLength = 300;
@@ -145,6 +145,7 @@ public class PostsService(AppDbContext db) : IPostsService
 
         db.Posts.Remove(post);
         await db.SaveChangesAsync();
+        logger.LogInformation("Post {Id} ({Slug}) deleted", post.Id, post.Slug);
         return ServiceResult.Ok();
     }
 

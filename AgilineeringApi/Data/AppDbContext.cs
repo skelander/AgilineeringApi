@@ -69,7 +69,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             entity.HasIndex(pp => pp.Token).IsUnique();
             entity.HasIndex(pp => pp.PostId);
-            entity.Property(pp => pp.Token).HasMaxLength(32);
+            entity.Property(pp => pp.Token).HasMaxLength(SecurityConstants.PreviewTokenLength);
             entity.Property(pp => pp.PasswordHash).HasMaxLength(128);
             entity.HasOne(pp => pp.Post)
                 .WithMany()

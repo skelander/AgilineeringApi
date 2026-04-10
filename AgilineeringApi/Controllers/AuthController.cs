@@ -13,9 +13,11 @@ namespace AgilineeringApi.Controllers;
 public class AuthController(
     IAuthService authService,
     IOptions<JwtOptions> jwtOptions,
+    IOptions<SecurityOptions> securityOptions,
     IWebHostEnvironment env) : ControllerBase
 {
     private readonly JwtOptions _jwt = jwtOptions.Value;
+    private readonly SecurityOptions _security = securityOptions.Value;
 
     [HttpPost("login")]
     [EnableRateLimiting("login")]
@@ -50,8 +52,8 @@ public class AuthController(
     {
         if (string.IsNullOrWhiteSpace(request.CurrentPassword) || string.IsNullOrWhiteSpace(request.NewPassword))
             return BadRequest(new { error = "Current password and new password are required." });
-        if (request.NewPassword.Length < 12)
-            return BadRequest(new { error = "New password must be at least 12 characters." });
+        if (request.NewPassword.Length < _security.MinPasswordLength)
+            return BadRequest(new { error = $"New password must be at least {_security.MinPasswordLength} characters." });
 
         var userId = User.GetUserId();
         if (userId is null)

@@ -11,6 +11,7 @@ namespace AgilineeringApi.Controllers;
 public class TagsController(ITagsService tagsService) : ControllerBase
 {
     [HttpGet]
+    [EnableRateLimiting("read")]
     public async Task<IActionResult> GetAll() =>
         Ok(await tagsService.GetAllAsync());
 
