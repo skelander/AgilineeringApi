@@ -3,7 +3,7 @@ using System.Text;
 
 namespace AgilineeringApi.Infrastructure;
 
-public class AdminKeyMiddleware(RequestDelegate next, IConfiguration configuration)
+public class AdminKeyMiddleware(RequestDelegate next, IConfiguration configuration, ILogger<AdminKeyMiddleware> logger)
 {
     public async Task InvokeAsync(HttpContext context)
     {
@@ -12,6 +12,8 @@ public class AdminKeyMiddleware(RequestDelegate next, IConfiguration configurati
             var configuredKey = configuration["AdminKey"];
             if (string.IsNullOrEmpty(configuredKey))
             {
+                logger.LogWarning("Admin key is not configured — write request blocked: {Method} {Path}",
+                    context.Request.Method, context.Request.Path);
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;
                 await context.Response.WriteAsJsonAsync(new { error = "Write access is not available." });
                 return;
@@ -21,6 +23,9 @@ public class AdminKeyMiddleware(RequestDelegate next, IConfiguration configurati
             var providedHash = SHA256.HashData(Encoding.UTF8.GetBytes(providedKey));
             if (!CryptographicOperations.FixedTimeEquals(configuredHash, providedHash))
             {
+                logger.LogWarning("Invalid admin key on {Method} {Path} from {IP}",
+                    context.Request.Method, context.Request.Path,
+                    context.Connection.RemoteIpAddress);
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;
                 await context.Response.WriteAsJsonAsync(new { error = "Write access is not available." });
                 return;

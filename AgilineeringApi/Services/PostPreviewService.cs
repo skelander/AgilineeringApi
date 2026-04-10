@@ -76,6 +76,10 @@ public class PostPreviewService(AppDbContext db, ILogger<PostPreviewService> log
             return ServiceResult<CommentResponse>.Forbidden("Invalid credentials.");
         }
 
+        var commentCount = await db.PreviewComments.CountAsync(c => c.PreviewId == preview.Id);
+        if (commentCount >= MaxCommentsPerPreview)
+            return ServiceResult<CommentResponse>.BadRequest($"This preview has reached the maximum number of comments ({MaxCommentsPerPreview}).");
+
         var comment = new PreviewComment
         {
             PreviewId = preview.Id,

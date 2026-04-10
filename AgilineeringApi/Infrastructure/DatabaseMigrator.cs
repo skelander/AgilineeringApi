@@ -12,7 +12,7 @@ public class DatabaseMigrator(AppDbContext db, ILogger<DatabaseMigrator> logger)
         // SQLite throws "duplicate column name" if already present — expected and ignored.
         TryAlterTable("ALTER TABLE Users ADD COLUMN FailedLoginAttempts INTEGER NOT NULL DEFAULT 0");
         TryAlterTable("ALTER TABLE Users ADD COLUMN LockoutEnd TEXT NULL");
-        TryDropColumn("PostPreviews", "Name");
+        TryAlterTable("ALTER TABLE PostPreviews DROP COLUMN Name");
 
         db.Database.ExecuteSqlRaw("""
             CREATE TABLE IF NOT EXISTS PostPreviews (
@@ -63,9 +63,10 @@ public class DatabaseMigrator(AppDbContext db, ILogger<DatabaseMigrator> logger)
         {
             db.Database.ExecuteSqlRaw(sql);
         }
-        catch (SqliteException ex) when (ex.SqliteErrorCode == 1 && ex.Message.Contains("duplicate column name"))
+        catch (SqliteException ex) when (ex.SqliteErrorCode == 1 &&
+            (ex.Message.Contains("duplicate column name") || ex.Message.Contains("no such column")))
         {
-            // Column already exists — expected when upgrading an existing database
+            // Already in target state — expected when re-running migrations on an up-to-date database
         }
         catch (Exception ex)
         {
@@ -73,19 +74,4 @@ public class DatabaseMigrator(AppDbContext db, ILogger<DatabaseMigrator> logger)
         }
     }
 
-    private void TryDropColumn(string table, string column)
-    {
-        try
-        {
-            db.Database.ExecuteSqlRaw($"ALTER TABLE {table} DROP COLUMN {column}");
-        }
-        catch (SqliteException ex) when (ex.SqliteErrorCode == 1 && ex.Message.Contains("no such column"))
-        {
-            // Column already removed — expected on fresh databases or after re-running migrations
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Unexpected error dropping column {Column} from {Table}", column, table);
-        }
-    }
 }

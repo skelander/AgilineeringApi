@@ -89,6 +89,7 @@ public class PostPreviewAccessController(IPostPreviewService previewService) : C
             ServiceResultStatus.Ok => StatusCode(201, result.Value),
             ServiceResultStatus.NotFound => NotFound(new { error = "This preview has been removed. Ask the author for a new link." }),
             ServiceResultStatus.Forbidden => Unauthorized(new { error = "Invalid credentials." }),
+            ServiceResultStatus.BadRequest => BadRequest(new { error = result.Error }),
             _ => StatusCode(500)
         };
     }
