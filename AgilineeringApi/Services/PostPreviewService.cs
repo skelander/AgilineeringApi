@@ -1,3 +1,4 @@
+using AgilineeringApi;
 using AgilineeringApi.Data;
 using AgilineeringApi.Models;
 using Microsoft.EntityFrameworkCore;
@@ -6,6 +7,9 @@ namespace AgilineeringApi.Services;
 
 public class PostPreviewService(AppDbContext db, ILogger<PostPreviewService> logger) : IPostPreviewService
 {
+    private const int MaxPreviewsPerPost = 20;
+    private const int MaxCommentsPerPreview = 100;
+
     public async Task<ServiceResult<PreviewResponse>> CreateAsync(int postId, CreatePreviewRequest request)
     {
         var post = await db.Posts.FindAsync(postId);
@@ -15,15 +19,14 @@ public class PostPreviewService(AppDbContext db, ILogger<PostPreviewService> log
             return ServiceResult<PreviewResponse>.BadRequest("Published posts do not need preview links.");
 
         var previewCount = await db.PostPreviews.CountAsync(pp => pp.PostId == postId);
-        if (previewCount >= 20)
-            return ServiceResult<PreviewResponse>.BadRequest("This post already has the maximum number of previews (20).");
+        if (previewCount >= MaxPreviewsPerPost)
+            return ServiceResult<PreviewResponse>.BadRequest($"This post already has the maximum number of previews ({MaxPreviewsPerPost}).");
 
         var preview = new PostPreview
         {
             PostId = postId,
             Token = Guid.NewGuid().ToString("N"),
-            Name = "",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password, workFactor: 12),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password, workFactor: SecurityConstants.PasswordHashWorkFactor),
             CreatedAt = DateTime.UtcNow
         };
         db.PostPreviews.Add(preview);
@@ -99,13 +102,12 @@ public class PostPreviewService(AppDbContext db, ILogger<PostPreviewService> log
         var comments = await db.PreviewComments
             .Where(c => c.PreviewId == preview.Id)
             .OrderBy(c => c.CreatedAt)
-            .Take(100)
+            .Take(MaxCommentsPerPreview)
             .Select(c => new CommentResponse(c.Id, c.Body, c.CreatedAt))
             .ToListAsync();
         return ServiceResult<IEnumerable<CommentResponse>>.Ok(comments);
     }
 
-    // Always verify both fields to avoid timing side-channel leaking which field was wrong
     private static bool VerifyCredentials(PostPreview preview, string password) =>
         BCrypt.Net.BCrypt.Verify(password, preview.PasswordHash);
 

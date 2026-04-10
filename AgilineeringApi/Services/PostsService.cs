@@ -1,5 +1,6 @@
 using AgilineeringApi.Data;
 using AgilineeringApi.Models;
+using AgilineeringApi.Utilities;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
@@ -7,6 +8,10 @@ namespace AgilineeringApi.Services;
 
 public class PostsService(AppDbContext db) : IPostsService
 {
+    private const int MaxTitleLength = 300;
+    private const int MaxSlugLength = 300;
+    private const int MaxContentLength = 500_000;
+
     public async Task<PagedResult<PostSummaryResponse>> GetAllAsync(bool includeUnpublished = false, int page = 1, int pageSize = 10, string? tag = null)
     {
         var query = db.Posts
@@ -52,6 +57,9 @@ public class PostsService(AppDbContext db) : IPostsService
 
     public async Task<ServiceResult<PostDetailResponse>> CreateAsync(CreatePostRequest request, int authorId)
     {
+        var validation = ValidateFields(request.Title, request.Content, request.Slug);
+        if (validation is not null) return validation;
+
         if (await db.Posts.AnyAsync(p => p.Slug == request.Slug))
             return ServiceResult<PostDetailResponse>.Conflict($"Post with slug '{request.Slug}' already exists.");
 
@@ -82,7 +90,7 @@ public class PostsService(AppDbContext db) : IPostsService
         {
             await db.SaveChangesAsync();
         }
-        catch (DbUpdateException ex) when (ex.InnerException is SqliteException { SqliteErrorCode: 19 })
+        catch (DbUpdateException ex) when (ex.InnerException is SqliteException { SqliteErrorCode: SqliteErrorCodes.UniqueConstraintViolation })
         {
             return ServiceResult<PostDetailResponse>.Conflict($"Post with slug '{request.Slug}' already exists.");
         }
@@ -91,6 +99,9 @@ public class PostsService(AppDbContext db) : IPostsService
 
     public async Task<ServiceResult<PostDetailResponse>> UpdateAsync(int id, UpdatePostRequest request)
     {
+        var validation = ValidateFields(request.Title, request.Content, request.Slug);
+        if (validation is not null) return validation;
+
         var post = await db.Posts
             .Include(p => p.Author)
             .Include(p => p.Tags)
@@ -119,7 +130,7 @@ public class PostsService(AppDbContext db) : IPostsService
         {
             await db.SaveChangesAsync();
         }
-        catch (DbUpdateException ex) when (ex.InnerException is SqliteException { SqliteErrorCode: 19 })
+        catch (DbUpdateException ex) when (ex.InnerException is SqliteException { SqliteErrorCode: SqliteErrorCodes.UniqueConstraintViolation })
         {
             return ServiceResult<PostDetailResponse>.Conflict($"Post with slug '{request.Slug}' already exists.");
         }
@@ -135,6 +146,25 @@ public class PostsService(AppDbContext db) : IPostsService
         db.Posts.Remove(post);
         await db.SaveChangesAsync();
         return ServiceResult.Ok();
+    }
+
+    private static ServiceResult<PostDetailResponse>? ValidateFields(string title, string content, string slug)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+            return ServiceResult<PostDetailResponse>.BadRequest("Title is required.");
+        if (title.Length > MaxTitleLength)
+            return ServiceResult<PostDetailResponse>.BadRequest($"Title must be {MaxTitleLength} characters or fewer.");
+        if (string.IsNullOrWhiteSpace(content))
+            return ServiceResult<PostDetailResponse>.BadRequest("Content is required.");
+        if (content.Length > MaxContentLength)
+            return ServiceResult<PostDetailResponse>.BadRequest($"Content must be {MaxContentLength:N0} characters or fewer.");
+        if (string.IsNullOrWhiteSpace(slug))
+            return ServiceResult<PostDetailResponse>.BadRequest("Slug is required.");
+        if (slug.Length > MaxSlugLength)
+            return ServiceResult<PostDetailResponse>.BadRequest($"Slug must be {MaxSlugLength} characters or fewer.");
+        if (!SlugValidator.IsValid(slug))
+            return ServiceResult<PostDetailResponse>.BadRequest("Slug must contain only lowercase letters, numbers, and hyphens.");
+        return null;
     }
 
     private static PostDetailResponse ToDetail(Post post) => new(

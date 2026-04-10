@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using AgilineeringApi.Extensions;
 using AgilineeringApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,7 +10,6 @@ namespace AgilineeringApi.Controllers;
 [Route("posts")]
 public class PostsController(IPostsService postsService, ILogger<PostsController> logger) : ControllerBase
 {
-
     [HttpGet]
     [EnableRateLimiting("read")]
     public async Task<IActionResult> GetAll(
@@ -21,8 +20,6 @@ public class PostsController(IPostsService postsService, ILogger<PostsController
     {
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 50);
-        if (tag is not null && !SlugValidator.IsValid(tag))
-            return BadRequest(new { error = "Tag must contain only lowercase letters, numbers, and hyphens." });
         var showUnpublished = includeUnpublished && User.IsInRole("admin");
         return Ok(await postsService.GetAllAsync(includeUnpublished: showUnpublished, page: page, pageSize: pageSize, tag: tag));
     }
@@ -30,14 +27,8 @@ public class PostsController(IPostsService postsService, ILogger<PostsController
     [HttpGet("{slug}")]
     public async Task<IActionResult> GetBySlug(string slug)
     {
-        var isAdmin = User.IsInRole("admin");
-        var result = await postsService.GetBySlugAsync(slug, includeUnpublished: isAdmin);
-        return result.Status switch
-        {
-            ServiceResultStatus.Ok => Ok(result.Value),
-            ServiceResultStatus.NotFound => NotFound(new { error = result.Error }),
-            _ => StatusCode(500)
-        };
+        var result = await postsService.GetBySlugAsync(slug, includeUnpublished: User.IsInRole("admin"));
+        return result.ToActionResult(this, Ok);
     }
 
     [HttpPost]
@@ -45,22 +36,15 @@ public class PostsController(IPostsService postsService, ILogger<PostsController
     [EnableRateLimiting("write")]
     public async Task<IActionResult> Create([FromBody] CreatePostRequest request)
     {
-        var validation = ValidatePostFields(request.Title, request.Content, request.Slug);
-        if (validation is not null) return validation;
-
-        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var authorId))
+        var authorId = User.GetUserId();
+        if (authorId is null)
             return Unauthorized(new { error = "Invalid token." });
 
-        var result = await postsService.CreateAsync(request, authorId);
+        var result = await postsService.CreateAsync(request, authorId.Value);
         if (result.Status == ServiceResultStatus.Ok)
             logger.LogInformation("Admin {User} created post {Slug}", User.Identity?.Name ?? "unknown", result.Value!.Slug);
-        return result.Status switch
-        {
-            ServiceResultStatus.Ok => CreatedAtAction(nameof(GetBySlug), new { slug = result.Value!.Slug }, result.Value),
-            ServiceResultStatus.Conflict => Conflict(new { error = result.Error }),
-            ServiceResultStatus.BadRequest => BadRequest(new { error = result.Error }),
-            _ => StatusCode(500)
-        };
+        return result.ToActionResult(this,
+            value => CreatedAtAction(nameof(GetBySlug), new { slug = value.Slug }, value));
     }
 
     [HttpPut("{id:int}")]
@@ -68,20 +52,10 @@ public class PostsController(IPostsService postsService, ILogger<PostsController
     [EnableRateLimiting("write")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdatePostRequest request)
     {
-        var validation = ValidatePostFields(request.Title, request.Content, request.Slug);
-        if (validation is not null) return validation;
-
         var result = await postsService.UpdateAsync(id, request);
         if (result.Status == ServiceResultStatus.Ok)
             logger.LogInformation("Admin {User} updated post {PostId}", User.Identity?.Name ?? "unknown", id);
-        return result.Status switch
-        {
-            ServiceResultStatus.Ok => Ok(result.Value),
-            ServiceResultStatus.NotFound => NotFound(new { error = result.Error }),
-            ServiceResultStatus.Conflict => Conflict(new { error = result.Error }),
-            ServiceResultStatus.BadRequest => BadRequest(new { error = result.Error }),
-            _ => StatusCode(500)
-        };
+        return result.ToActionResult(this, Ok);
     }
 
     [HttpDelete("{id:int}")]
@@ -92,30 +66,6 @@ public class PostsController(IPostsService postsService, ILogger<PostsController
         var result = await postsService.DeleteAsync(id);
         if (result.Status == ServiceResultStatus.Ok)
             logger.LogInformation("Admin {User} deleted post {PostId}", User.Identity?.Name ?? "unknown", id);
-        return result.Status switch
-        {
-            ServiceResultStatus.Ok => NoContent(),
-            ServiceResultStatus.NotFound => NotFound(new { error = result.Error }),
-            _ => StatusCode(500)
-        };
-    }
-
-    private IActionResult? ValidatePostFields(string title, string content, string slug)
-    {
-        if (string.IsNullOrWhiteSpace(title))
-            return BadRequest(new { error = "Title is required." });
-        if (title.Length > 300)
-            return BadRequest(new { error = "Title must be 300 characters or fewer." });
-        if (string.IsNullOrWhiteSpace(content))
-            return BadRequest(new { error = "Content is required." });
-        if (content.Length > 500_000)
-            return BadRequest(new { error = "Content must be 500,000 characters or fewer." });
-        if (string.IsNullOrWhiteSpace(slug))
-            return BadRequest(new { error = "Slug is required." });
-        if (slug.Length > 300)
-            return BadRequest(new { error = "Slug must be 300 characters or fewer." });
-        if (!SlugValidator.IsValid(slug))
-            return BadRequest(new { error = "Slug must contain only lowercase letters, numbers, and hyphens." });
-        return null;
+        return result.ToActionResult(this, NoContent());
     }
 }

@@ -1,15 +1,22 @@
-using System.Security.Claims;
+using AgilineeringApi.Extensions;
+using AgilineeringApi.Options;
 using AgilineeringApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
 
 namespace AgilineeringApi.Controllers;
 
 [ApiController]
 [Route("auth")]
-public class AuthController(IAuthService authService, IConfiguration configuration, IWebHostEnvironment env) : ControllerBase
+public class AuthController(
+    IAuthService authService,
+    IOptions<JwtOptions> jwtOptions,
+    IWebHostEnvironment env) : ControllerBase
 {
+    private readonly JwtOptions _jwt = jwtOptions.Value;
+
     [HttpPost("login")]
     [EnableRateLimiting("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
@@ -25,29 +32,14 @@ public class AuthController(IAuthService authService, IConfiguration configurati
         if (result.Response is null)
             return Unauthorized(new { error = result.Error });
 
-        var expiryHours = configuration.GetValue("Jwt:ExpiryHours", 8);
-        Response.Cookies.Append("auth_token", result.Response.Token, new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = env.IsProduction(),
-            SameSite = env.IsProduction() ? SameSiteMode.None : SameSiteMode.Lax,
-            Expires = DateTimeOffset.UtcNow.AddHours(expiryHours),
-            Path = "/"
-        });
-
+        SetAuthCookie(result.Response.Token);
         return Ok(new { role = result.Response.Role });
     }
 
     [HttpPost("logout")]
     public IActionResult Logout()
     {
-        Response.Cookies.Delete("auth_token", new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = env.IsProduction(),
-            SameSite = env.IsProduction() ? SameSiteMode.None : SameSiteMode.Lax,
-            Path = "/"
-        });
+        DeleteAuthCookie();
         return NoContent();
     }
 
@@ -61,16 +53,30 @@ public class AuthController(IAuthService authService, IConfiguration configurati
         if (request.NewPassword.Length < 12)
             return BadRequest(new { error = "New password must be at least 12 characters." });
 
-        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        var userId = User.GetUserId();
+        if (userId is null)
             return Unauthorized(new { error = "Invalid token." });
 
-        var result = await authService.ChangePasswordAsync(userId, request);
-        return result.Status switch
-        {
-            ServiceResultStatus.Ok => NoContent(),
-            ServiceResultStatus.Forbidden => StatusCode(403, new { error = result.Error }),
-            ServiceResultStatus.NotFound => NotFound(new { error = result.Error }),
-            _ => StatusCode(500)
-        };
+        var result = await authService.ChangePasswordAsync(userId.Value, request);
+        return result.ToActionResult(this, NoContent());
     }
+
+    private void SetAuthCookie(string token) =>
+        Response.Cookies.Append("auth_token", token, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = env.IsProduction(),
+            SameSite = env.IsProduction() ? SameSiteMode.None : SameSiteMode.Lax,
+            Expires = DateTimeOffset.UtcNow.AddHours(_jwt.ExpiryHours),
+            Path = "/"
+        });
+
+    private void DeleteAuthCookie() =>
+        Response.Cookies.Delete("auth_token", new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = env.IsProduction(),
+            SameSite = env.IsProduction() ? SameSiteMode.None : SameSiteMode.Lax,
+            Path = "/"
+        });
 }

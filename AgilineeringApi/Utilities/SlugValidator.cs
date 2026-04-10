@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace AgilineeringApi.Controllers;
+namespace AgilineeringApi.Utilities;
 
 internal static class SlugValidator
 {

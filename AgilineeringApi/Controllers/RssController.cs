@@ -16,7 +16,7 @@ public class RssController(IPostsService postsService, IConfiguration config) : 
     public async Task<IActionResult> Get()
     {
         var result = await postsService.GetAllAsync(includeUnpublished: false, page: 1, pageSize: 20);
-        var siteUrl = (config["Site:Url"] ?? "https://agilineering.se").TrimEnd('/');
+        var siteUrl = (config["Site:BaseUrl"] ?? "https://agilineering.se").TrimEnd('/');
 
         var items = result.Items.Select(post =>
         {

@@ -2,13 +2,22 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using AgilineeringApi.Data;
+using AgilineeringApi.Options;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
 namespace AgilineeringApi.Services;
 
-public class AuthService(AppDbContext db, IConfiguration configuration, ILogger<AuthService> logger) : IAuthService
+public class AuthService(
+    AppDbContext db,
+    IOptions<SecurityOptions> securityOptions,
+    IOptions<JwtOptions> jwtOptions,
+    ILogger<AuthService> logger) : IAuthService
 {
+    private readonly SecurityOptions _security = securityOptions.Value;
+    private readonly JwtOptions _jwt = jwtOptions.Value;
+
     public async Task<LoginResult> LoginAsync(LoginRequest request)
     {
         var user = await db.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
@@ -29,11 +38,10 @@ public class AuthService(AppDbContext db, IConfiguration configuration, ILogger<
         if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
         {
             user.FailedLoginAttempts++;
-            var maxAttempts = Math.Max(1, configuration.GetValue("Security:MaxFailedLoginAttempts", 5));
+            var maxAttempts = Math.Max(1, _security.MaxFailedLoginAttempts);
             if (user.FailedLoginAttempts >= maxAttempts)
             {
-                var lockoutMinutes = configuration.GetValue("Security:LockoutDurationMinutes", 15);
-                user.LockoutEnd = DateTime.UtcNow.AddMinutes(lockoutMinutes);
+                user.LockoutEnd = DateTime.UtcNow.AddMinutes(_security.LockoutDurationMinutes);
                 logger.LogWarning("Account {Username} locked out after {Attempts} failed attempts", user.Username, user.FailedLoginAttempts);
             }
             else
@@ -50,7 +58,7 @@ public class AuthService(AppDbContext db, IConfiguration configuration, ILogger<
         await db.SaveChangesAsync();
         logger.LogInformation("User {Username} logged in successfully", user.Username);
 
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Jwt:Key"]!));
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwt.Key));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         var claims = new[]
         {
@@ -59,10 +67,10 @@ public class AuthService(AppDbContext db, IConfiguration configuration, ILogger<
             new Claim(ClaimTypes.Role, user.Role),
         };
         var token = new JwtSecurityToken(
-            issuer: configuration["Jwt:Issuer"],
-            audience: configuration["Jwt:Audience"],
+            issuer: _jwt.Issuer,
+            audience: _jwt.Audience,
             claims: claims,
-            expires: DateTime.UtcNow.AddHours(configuration.GetValue("Jwt:ExpiryHours", 8)),
+            expires: DateTime.UtcNow.AddHours(_jwt.ExpiryHours),
             signingCredentials: creds);
 
         return new LoginResult(new LoginResponse(new JwtSecurityTokenHandler().WriteToken(token), user.Role), null, null);
@@ -77,7 +85,7 @@ public class AuthService(AppDbContext db, IConfiguration configuration, ILogger<
         if (!BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.PasswordHash))
             return ServiceResult.Forbidden("Current password is incorrect.");
 
-        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword, workFactor: 12);
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword, workFactor: SecurityConstants.PasswordHashWorkFactor);
         await db.SaveChangesAsync();
         logger.LogInformation("User {Username} changed their password", user.Username);
         return ServiceResult.Ok();

@@ -1,3 +1,4 @@
+using AgilineeringApi.Extensions;
 using AgilineeringApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,13 +20,7 @@ public class PostPreviewsController(IPostPreviewService previewService) : Contro
             return BadRequest(new { error = "Password must be at least 6 characters." });
 
         var result = await previewService.CreateAsync(postId, request);
-        return result.Status switch
-        {
-            ServiceResultStatus.Ok => StatusCode(201, result.Value),
-            ServiceResultStatus.NotFound => NotFound(new { error = result.Error }),
-            ServiceResultStatus.BadRequest => BadRequest(new { error = result.Error }),
-            _ => StatusCode(500)
-        };
+        return result.ToActionResult(this, value => StatusCode(201, value));
     }
 }
 
@@ -38,7 +33,7 @@ public class PostPreviewAccessController(IPostPreviewService previewService) : C
     public async Task<IActionResult> Check(string token)
     {
         var exists = await previewService.TokenExistsAsync(token);
-        return exists ? Ok() : NotFound(new { error = "This preview link is no longer valid." });
+        return exists ? Ok() : NotFound(new { error = "This preview has been removed. Ask the author for a new link." });
     }
 
     [HttpPost("{token}/access")]
@@ -71,7 +66,7 @@ public class PostPreviewAccessController(IPostPreviewService previewService) : C
         return result.Status switch
         {
             ServiceResultStatus.Ok => Ok(result.Value),
-            ServiceResultStatus.NotFound => NotFound(new { error = "This preview link is no longer valid." }),
+            ServiceResultStatus.NotFound => NotFound(new { error = "This preview has been removed. Ask the author for a new link." }),
             ServiceResultStatus.Forbidden => Unauthorized(new { error = "Invalid credentials." }),
             _ => StatusCode(500)
         };
@@ -92,7 +87,7 @@ public class PostPreviewAccessController(IPostPreviewService previewService) : C
         return result.Status switch
         {
             ServiceResultStatus.Ok => StatusCode(201, result.Value),
-            ServiceResultStatus.NotFound => NotFound(new { error = "This preview link is no longer valid." }),
+            ServiceResultStatus.NotFound => NotFound(new { error = "This preview has been removed. Ask the author for a new link." }),
             ServiceResultStatus.Forbidden => Unauthorized(new { error = "Invalid credentials." }),
             _ => StatusCode(500)
         };

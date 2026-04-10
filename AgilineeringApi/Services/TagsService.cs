@@ -1,4 +1,5 @@
 using AgilineeringApi.Data;
+using AgilineeringApi.Utilities;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
@@ -6,16 +7,28 @@ namespace AgilineeringApi.Services;
 
 public class TagsService(AppDbContext db) : ITagsService
 {
-    public async Task<List<TagResponse>> GetAllAsync()
-    {
-        return await db.Tags
+    private const int MaxNameLength = 100;
+    private const int MaxSlugLength = 100;
+
+    public async Task<List<TagResponse>> GetAllAsync() =>
+        await db.Tags
             .OrderBy(t => t.Name)
             .Select(t => new TagResponse(t.Id, t.Name, t.Slug))
             .ToListAsync();
-    }
 
     public async Task<ServiceResult<TagResponse>> CreateAsync(CreateTagRequest request)
     {
+        if (string.IsNullOrWhiteSpace(request.Name))
+            return ServiceResult<TagResponse>.BadRequest("Name is required.");
+        if (request.Name.Length > MaxNameLength)
+            return ServiceResult<TagResponse>.BadRequest($"Name must be {MaxNameLength} characters or fewer.");
+        if (string.IsNullOrWhiteSpace(request.Slug))
+            return ServiceResult<TagResponse>.BadRequest("Slug is required.");
+        if (request.Slug.Length > MaxSlugLength)
+            return ServiceResult<TagResponse>.BadRequest($"Slug must be {MaxSlugLength} characters or fewer.");
+        if (!SlugValidator.IsValid(request.Slug))
+            return ServiceResult<TagResponse>.BadRequest("Slug must contain only lowercase letters, numbers, and hyphens.");
+
         if (await db.Tags.AnyAsync(t => t.Slug == request.Slug))
             return ServiceResult<TagResponse>.Conflict($"Tag with slug '{request.Slug}' already exists.");
 
@@ -28,7 +41,7 @@ public class TagsService(AppDbContext db) : ITagsService
         {
             await db.SaveChangesAsync();
         }
-        catch (DbUpdateException ex) when (ex.InnerException is SqliteException { SqliteErrorCode: 19 })
+        catch (DbUpdateException ex) when (ex.InnerException is SqliteException { SqliteErrorCode: SqliteErrorCodes.UniqueConstraintViolation })
         {
             return ServiceResult<TagResponse>.Conflict($"Tag with slug '{request.Slug}' or name '{request.Name}' already exists.");
         }

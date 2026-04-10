@@ -242,10 +242,12 @@ public class PostsControllerTests : IClassFixture<AgilineeringFactory>
     [InlineData("tag with spaces")]
     [InlineData("tag!special")]
     [InlineData("UPPERCASE")]
-    public async Task GetAll_InvalidTagFormat_Returns400(string tag)
+    public async Task GetAll_InvalidTagFormat_ReturnsEmptyPage(string tag)
     {
-        var response = await _client.GetAsync($"/posts?tag={Uri.EscapeDataString(tag)}");
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        // Invalid tag slugs match no tags — returns 200 with empty results rather than 400
+        var result = await _client.GetFromJsonAsync<PagedResult<PostSummaryResponse>>($"/posts?tag={Uri.EscapeDataString(tag)}");
+        Assert.NotNull(result);
+        Assert.Empty(result!.Items);
     }
 
     [Fact]
