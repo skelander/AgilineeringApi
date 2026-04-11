@@ -7,16 +7,23 @@ namespace AgilineeringApi.Controllers;
 
 [ApiController]
 [Route("rss.xml")]
-public class RssController(IPostsService postsService, IConfiguration config) : ControllerBase
+public class RssController(IPostsService postsService, IConfiguration config, ILogger<RssController> logger) : ControllerBase
 {
     private static readonly XNamespace Atom = "http://www.w3.org/2005/Atom";
 
     [HttpGet]
     [ResponseCache(Duration = 900)]
-    public async Task<IActionResult> Get()
+    public async Task<IActionResult> Get(CancellationToken ct = default)
     {
-        var result = await postsService.GetAllAsync(includeUnpublished: false, page: 1, pageSize: 20);
-        var siteUrl = (config["Site:BaseUrl"] ?? "https://agilineering.se").TrimEnd('/');
+        var siteBaseUrl = config["Site:BaseUrl"];
+        if (string.IsNullOrWhiteSpace(siteBaseUrl))
+        {
+            logger.LogError("RSS feed requested but Site:BaseUrl is not configured");
+            return StatusCode(500, new { error = "RSS feed is not configured." });
+        }
+        var siteUrl = siteBaseUrl.TrimEnd('/');
+
+        var result = await postsService.GetAllAsync(includeUnpublished: false, page: 1, pageSize: 20, ct: ct);
 
         var items = result.Items.Select(post =>
         {

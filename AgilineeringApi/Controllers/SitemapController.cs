@@ -4,15 +4,20 @@ using Microsoft.AspNetCore.Mvc;
 namespace AgilineeringApi.Controllers;
 
 [ApiController]
-public class SitemapController(IPostsService postsService, IConfiguration configuration) : ControllerBase
+public class SitemapController(IPostsService postsService, IConfiguration configuration, ILogger<SitemapController> logger) : ControllerBase
 {
     [HttpGet("/sitemap.xml")]
-    public async Task<IActionResult> Get()
+    public async Task<IActionResult> Get(CancellationToken ct = default)
     {
-        var baseUrl = configuration["Site:BaseUrl"]?.TrimEnd('/');
-        if (string.IsNullOrEmpty(baseUrl))
-            return Problem("Site:BaseUrl is not configured.", statusCode: 500);
-        var result = await postsService.GetAllAsync(includeUnpublished: false, page: 1, pageSize: 1000);
+        var siteBaseUrl = configuration["Site:BaseUrl"];
+        if (string.IsNullOrWhiteSpace(siteBaseUrl))
+        {
+            logger.LogError("Sitemap requested but Site:BaseUrl is not configured");
+            return StatusCode(500, new { error = "Sitemap is not configured." });
+        }
+        var baseUrl = siteBaseUrl.TrimEnd('/');
+
+        var result = await postsService.GetAllAsync(includeUnpublished: false, page: 1, pageSize: 1000, ct: ct);
 
         var sb = new System.Text.StringBuilder();
         sb.AppendLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");

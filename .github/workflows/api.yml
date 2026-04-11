@@ -15,6 +15,9 @@ on:
 jobs:
   build-test-deploy:
     runs-on: ubuntu-latest
+    env:
+      Jwt__Issuer: AgilineeringApi
+      Jwt__Audience: AgilineeringApi
 
     steps:
       - uses: actions/checkout@v4
@@ -37,12 +40,10 @@ jobs:
         run: dotnet test AgilineeringApi.Tests/AgilineeringApi.Tests.csproj --no-build
         env:
           Jwt__Key: ${{ secrets.JWT_KEY }}
-          Jwt__Issuer: AgilineeringApi
-          Jwt__Audience: AgilineeringApi
 
       - name: Deploy to Fly.io
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        uses: superfly/flyctl-actions/setup-flyctl@master
+        uses: superfly/flyctl-actions/setup-flyctl@1.5
 
       - name: Fly deploy
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'

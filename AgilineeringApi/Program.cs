@@ -5,6 +5,7 @@ using AgilineeringApi.Infrastructure;
 using AgilineeringApi.Options;
 using AgilineeringApi.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -67,9 +68,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
+var corsOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? [];
+if (corsOrigins.Length == 0)
+    Console.WriteLine("[WARN] Cors:Origins is not configured — all cross-origin requests will be rejected.");
+
 builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>
-        policy.WithOrigins(builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? [])
+        policy.WithOrigins(corsOrigins)
               .WithHeaders("Content-Type", "X-Admin-Key")
               .WithMethods("GET", "POST", "PUT", "DELETE")
               .AllowCredentials()));
@@ -85,6 +90,13 @@ using (var scope = app.Services.CreateScope())
     scope.ServiceProvider.GetRequiredService<DatabaseMigrator>().Apply();
     await scope.ServiceProvider.GetRequiredService<DataSeeder>().SeedAsync();
 }
+
+// Resolve real client IP from X-Forwarded-For when running behind a reverse proxy (e.g. Fly.io).
+// This must run before rate limiting so RemoteIpAddress is correct.
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
 
 app.Use(async (context, next) =>
 {

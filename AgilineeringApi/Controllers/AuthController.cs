@@ -21,14 +21,16 @@ public class AuthController(
 
     [HttpPost("login")]
     [EnableRateLimiting("login")]
-    public async Task<IActionResult> Login([FromBody] LoginRequest request)
+    public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
             return BadRequest(new { error = "Username and password are required." });
+        if (request.Username.Length > SecurityConstants.MaxUsernameLength)
+            return BadRequest(new { error = $"Username must be {SecurityConstants.MaxUsernameLength} characters or fewer." });
         if (request.Password.Length > SecurityConstants.MaxPasswordLength)
             return BadRequest(new { error = $"Password must be {SecurityConstants.MaxPasswordLength} characters or fewer." });
 
-        var result = await authService.LoginAsync(request);
+        var result = await authService.LoginAsync(request, ct);
 
         if (result.LockedUntil.HasValue)
             return StatusCode(429, new { error = result.Error, lockedUntil = result.LockedUntil });
@@ -50,7 +52,7 @@ public class AuthController(
     [HttpPost("change-password")]
     [Authorize(Roles = "admin")]
     [EnableRateLimiting("login")]
-    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(request.CurrentPassword) || string.IsNullOrWhiteSpace(request.NewPassword))
             return BadRequest(new { error = "Current password and new password are required." });
@@ -63,7 +65,7 @@ public class AuthController(
         if (userId is null)
             return Unauthorized(new { error = "Invalid token." });
 
-        var result = await authService.ChangePasswordAsync(userId.Value, request);
+        var result = await authService.ChangePasswordAsync(userId.Value, request, ct);
         return result.ToActionResult(this, NoContent());
     }
 

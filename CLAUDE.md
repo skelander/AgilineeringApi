@@ -12,26 +12,50 @@ ASP.NET Core .NET 10 REST API — blogg med inlägg, taggar och JWT-autentiserin
 ## Projektstruktur
 ```
 AgilineeringApi/
-  Controllers/   AuthController, PostsController, TagsController
-  Services/      IAuthService, IPostsService, ITagsService + impl, ServiceResult<T>
-  Models/        User, Post, Tag
+  Controllers/   AuthController, PostsController, TagsController,
+                 ImagesController, PostPreviewsController,
+                 SitemapController, RssController
+  Services/      IAuthService, IPostsService, ITagsService,
+                 IImagesService, IPostPreviewService + impl, ServiceResult<T>
+  Models/        User, Post, Tag, Image, PostPreview, PreviewComment
   Data/          AppDbContext
   Program.cs
 
 AgilineeringApi.Tests/
-  AgilineeringFactory.cs   WebApplicationFactory med SQLite :memory:
+  AgilineeringFactory.cs          WebApplicationFactory med SQLite :memory:
+  TestHelpers.cs
   AuthControllerTests.cs
-  AuthLockoutTests.cs / AuthResetTests.cs
+  ChangePasswordTests.cs / ChangePasswordEffectTests.cs
+  LogoutTests.cs
+  TagsControllerTests.cs / TagsNameUniquenessTests.cs
   PostsControllerTests.cs
-  TagsControllerTests.cs
+  ImagesControllerTests.cs / ImagesListServeDeleteTests.cs
+  PostPreviewControllerTests.cs
+  CommentsTests.cs
+  SitemapRssTests.cs
 ```
 
 ## API Endpoints
-- `POST /auth/login` — publikt, returnerar JWT
+
+- `POST /auth/login` — publikt, returnerar JWT (sätter httpOnly-cookie)
+- `POST /auth/logout` — publikt, rensar auth-cookie
+- `POST /auth/change-password` — kräver JWT (admin)
 - `GET /posts`, `GET /posts/{slug}` — publikt (admin ser även opublicerade)
 - `POST /posts`, `PUT /posts/{id}`, `DELETE /posts/{id}` — kräver JWT (admin)
 - `GET /tags` — publikt
 - `POST /tags`, `DELETE /tags/{id}` — kräver JWT (admin)
+- `GET /images` — kräver JWT (admin), listar bilder
+- `GET /images/{filename}` — publikt, serverar bildfil
+- `POST /images` — kräver JWT (admin), laddar upp bild
+- `DELETE /images/{filename}` — kräver JWT (admin)
+- `GET /posts/{postId}/previews` — kräver JWT (admin), listar förhandsvisningar
+- `POST /posts/{postId}/previews` — kräver JWT (admin), skapar förhandsvisning
+- `GET /posts/preview/{token}` — publikt, kontrollerar token
+- `POST /posts/preview/{token}` — publikt med lösenord, hämtar post
+- `GET /posts/preview/{token}/comments` — publikt med lösenord
+- `POST /posts/preview/{token}/comments` — publikt med lösenord, lägger till kommentar
+- `GET /sitemap.xml` — publikt
+- `GET /rss.xml` — publikt
 
 ## Arkitektur
 - Controllers beror bara på interfaces, aldrig konkreta typer

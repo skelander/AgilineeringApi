@@ -16,7 +16,7 @@ public class ChangePasswordSuccessTests : IClassFixture<AgilineeringFactory>
     }
 
     [Fact]
-    public async Task ChangePassword_Valid_Returns204()
+    public async Task ChangePassword_WithValidCurrentAndNewPassword_Returns204()
     {
         await _client.AuthenticateAsync();
 

@@ -30,22 +30,22 @@ public class ImagesService(AppDbContext db, IOptions<ImagesOptions> imagesOption
         [".webp"] = "image/webp",
     };
 
-    public async Task<IEnumerable<ImageListItem>> ListAsync() =>
+    public async Task<IEnumerable<ImageListItem>> ListAsync(CancellationToken ct = default) =>
         await db.Images
             .OrderByDescending(i => i.CreatedAt)
             .Select(i => new ImageListItem(i.Filename, $"/images/{i.Filename}", i.Size, i.CreatedAt))
-            .ToListAsync();
+            .ToListAsync(ct);
 
-    public async Task<(byte[] Data, string ContentType)?> GetAsync(string filename)
+    public async Task<(byte[] Data, string ContentType)?> GetAsync(string filename, CancellationToken ct = default)
     {
         var image = await db.Images
             .Where(i => i.Filename == filename)
             .Select(i => new { i.ContentType, i.Data })
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync(ct);
         return image is null ? null : (image.Data, image.ContentType);
     }
 
-    public async Task<ServiceResult<string>> UploadAsync(IFormFile file)
+    public async Task<ServiceResult<string>> UploadAsync(IFormFile file, CancellationToken ct = default)
     {
         if (file is null || file.Length == 0)
             return ServiceResult<string>.BadRequest("No file provided.");
@@ -59,7 +59,7 @@ public class ImagesService(AppDbContext db, IOptions<ImagesOptions> imagesOption
             return ServiceResult<string>.BadRequest("Only jpg, jpeg, png, gif, and webp images are allowed.");
 
         using var ms = new MemoryStream();
-        await file.CopyToAsync(ms);
+        await file.CopyToAsync(ms, ct);
         var data = ms.ToArray();
 
         if (!HasValidMagicBytes(data, ext))
@@ -74,19 +74,19 @@ public class ImagesService(AppDbContext db, IOptions<ImagesOptions> imagesOption
             Size = data.Length,
             CreatedAt = DateTime.UtcNow,
         });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(ct);
         logger.LogInformation("Image {Filename} saved", filename);
         return ServiceResult<string>.Ok(filename);
     }
 
-    public async Task<ServiceResult> DeleteAsync(string filename)
+    public async Task<ServiceResult> DeleteAsync(string filename, CancellationToken ct = default)
     {
-        var image = await db.Images.FirstOrDefaultAsync(i => i.Filename == filename);
+        var image = await db.Images.FirstOrDefaultAsync(i => i.Filename == filename, ct);
         if (image is null)
             return ServiceResult.NotFound("Image not found.");
 
         db.Images.Remove(image);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(ct);
         logger.LogInformation("Image {Filename} removed", filename);
         return ServiceResult.Ok();
     }

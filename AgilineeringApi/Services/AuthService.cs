@@ -18,9 +18,9 @@ public class AuthService(
     private readonly SecurityOptions _security = securityOptions.Value;
     private readonly JwtOptions _jwt = jwtOptions.Value;
 
-    public async Task<LoginResult> LoginAsync(LoginRequest request)
+    public async Task<LoginResult> LoginAsync(LoginRequest request, CancellationToken ct = default)
     {
-        var user = await db.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Username == request.Username, ct);
 
         // Return same error for unknown user and wrong password to prevent user enumeration
         if (user is null)
@@ -48,14 +48,14 @@ public class AuthService(
             {
                 logger.LogWarning("Failed login attempt for {Username} ({Attempts}/{MaxAttempts})", user.Username, user.FailedLoginAttempts, maxAttempts);
             }
-            await db.SaveChangesAsync();
+            await db.SaveChangesAsync(ct);
             return new LoginResult(null, "Invalid username or password.", null);
         }
 
         // Successful login — reset lockout state
         user.FailedLoginAttempts = 0;
         user.LockoutEnd = null;
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(ct);
         logger.LogInformation("User {Username} logged in successfully", user.Username);
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwt.Key));
@@ -76,9 +76,9 @@ public class AuthService(
         return new LoginResult(new LoginResponse(new JwtSecurityTokenHandler().WriteToken(token), user.Role), null, null);
     }
 
-    public async Task<ServiceResult> ChangePasswordAsync(int userId, ChangePasswordRequest request)
+    public async Task<ServiceResult> ChangePasswordAsync(int userId, ChangePasswordRequest request, CancellationToken ct = default)
     {
-        var user = await db.Users.FindAsync(userId);
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
         if (user is null)
             return ServiceResult.NotFound("User not found.");
 
@@ -86,7 +86,7 @@ public class AuthService(
             return ServiceResult.Forbidden("Current password is incorrect.");
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword, workFactor: SecurityConstants.PasswordHashWorkFactor);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(ct);
         logger.LogInformation("User {Username} changed their password", user.Username);
         return ServiceResult.Ok();
     }

@@ -35,11 +35,7 @@ public class TagsNameUniquenessTests : IClassFixture<AgilineeringFactory>
         var response = await _client.PostAsJsonAsync("/tags",
             new CreateTagRequest("casetest", "case-test-2"));
 
-        // Name uniqueness check should catch this regardless of case
-        Assert.True(
-            response.StatusCode == HttpStatusCode.Conflict ||
-            response.StatusCode == HttpStatusCode.Created,
-            $"Expected 409 or 201, got {response.StatusCode}");
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
 }
 

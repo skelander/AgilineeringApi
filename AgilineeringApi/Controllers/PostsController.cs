@@ -16,32 +16,33 @@ public class PostsController(IPostsService postsService, ILogger<PostsController
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
         [FromQuery] string? tag = null,
-        [FromQuery] bool includeUnpublished = false)
+        [FromQuery] bool includeUnpublished = false,
+        CancellationToken ct = default)
     {
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 50);
         var showUnpublished = includeUnpublished && User.IsInRole("admin");
-        return Ok(await postsService.GetAllAsync(includeUnpublished: showUnpublished, page: page, pageSize: pageSize, tag: tag));
+        return Ok(await postsService.GetAllAsync(includeUnpublished: showUnpublished, page: page, pageSize: pageSize, tag: tag, ct: ct));
     }
 
     [HttpGet("{slug}")]
     [EnableRateLimiting("read")]
-    public async Task<IActionResult> GetBySlug(string slug)
+    public async Task<IActionResult> GetBySlug(string slug, CancellationToken ct = default)
     {
-        var result = await postsService.GetBySlugAsync(slug, includeUnpublished: User.IsInRole("admin"));
+        var result = await postsService.GetBySlugAsync(slug, includeUnpublished: User.IsInRole("admin"), ct: ct);
         return result.ToActionResult(this, Ok);
     }
 
     [HttpPost]
     [Authorize(Roles = "admin")]
     [EnableRateLimiting("write")]
-    public async Task<IActionResult> Create([FromBody] CreatePostRequest request)
+    public async Task<IActionResult> Create([FromBody] CreatePostRequest request, CancellationToken ct = default)
     {
         var authorId = User.GetUserId();
         if (authorId is null)
             return Unauthorized(new { error = "Invalid token." });
 
-        var result = await postsService.CreateAsync(request, authorId.Value);
+        var result = await postsService.CreateAsync(request, authorId.Value, ct);
         if (result.Status == ServiceResultStatus.Ok)
             logger.LogInformation("Admin {User} created post {Slug}", User.Identity?.Name ?? "unknown", result.Value!.Slug);
         return result.ToActionResult(this,
@@ -51,9 +52,9 @@ public class PostsController(IPostsService postsService, ILogger<PostsController
     [HttpPut("{id:int}")]
     [Authorize(Roles = "admin")]
     [EnableRateLimiting("write")]
-    public async Task<IActionResult> Update(int id, [FromBody] UpdatePostRequest request)
+    public async Task<IActionResult> Update(int id, [FromBody] UpdatePostRequest request, CancellationToken ct = default)
     {
-        var result = await postsService.UpdateAsync(id, request);
+        var result = await postsService.UpdateAsync(id, request, ct);
         if (result.Status == ServiceResultStatus.Ok)
             logger.LogInformation("Admin {User} updated post {PostId}", User.Identity?.Name ?? "unknown", id);
         return result.ToActionResult(this, Ok);
@@ -62,9 +63,9 @@ public class PostsController(IPostsService postsService, ILogger<PostsController
     [HttpDelete("{id:int}")]
     [Authorize(Roles = "admin")]
     [EnableRateLimiting("write")]
-    public async Task<IActionResult> Delete(int id)
+    public async Task<IActionResult> Delete(int id, CancellationToken ct = default)
     {
-        var result = await postsService.DeleteAsync(id);
+        var result = await postsService.DeleteAsync(id, ct);
         if (result.Status == ServiceResultStatus.Ok)
             logger.LogInformation("Admin {User} deleted post {PostId}", User.Identity?.Name ?? "unknown", id);
         return result.ToActionResult(this, NoContent());

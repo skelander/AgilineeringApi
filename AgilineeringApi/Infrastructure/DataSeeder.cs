@@ -41,11 +41,11 @@ public class DataSeeder(AppDbContext db, IConfiguration configuration, ILogger<D
             else
             {
                 password = Convert.ToBase64String(RandomNumberGenerator.GetBytes(18));
-                logger.LogWarning(
-                    "No Seed:AdminPassword configured. A random admin password has been generated: {Password} — " +
+                // Write directly to stdout so the password is not captured as a structured log field
+                Console.WriteLine(
+                    $"[WARN] No Seed:AdminPassword configured. Generated admin password: {password} — " +
                     "save this now, it will not be shown again. " +
-                    "Set Seed:AdminPassword in your secrets to control this on the next fresh database.",
-                    password);
+                    "Set Seed:AdminPassword in your secrets to control this on the next fresh database.");
             }
 
             db.Users.Add(new User

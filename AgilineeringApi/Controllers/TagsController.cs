@@ -12,15 +12,15 @@ public class TagsController(ITagsService tagsService, ILogger<TagsController> lo
 {
     [HttpGet]
     [EnableRateLimiting("read")]
-    public async Task<IActionResult> GetAll() =>
-        Ok(await tagsService.GetAllAsync());
+    public async Task<IActionResult> GetAll(CancellationToken ct = default) =>
+        Ok(await tagsService.GetAllAsync(ct));
 
     [HttpPost]
     [Authorize(Roles = "admin")]
     [EnableRateLimiting("write")]
-    public async Task<IActionResult> Create([FromBody] CreateTagRequest request)
+    public async Task<IActionResult> Create([FromBody] CreateTagRequest request, CancellationToken ct = default)
     {
-        var result = await tagsService.CreateAsync(request);
+        var result = await tagsService.CreateAsync(request, ct);
         if (result.Status == ServiceResultStatus.Ok)
             logger.LogInformation("Admin {User} created tag {Slug}", User.Identity?.Name ?? "unknown", result.Value!.Slug);
         return result.ToActionResult(this, value => Created($"/tags", value));
@@ -29,9 +29,9 @@ public class TagsController(ITagsService tagsService, ILogger<TagsController> lo
     [HttpDelete("{id:int}")]
     [Authorize(Roles = "admin")]
     [EnableRateLimiting("write")]
-    public async Task<IActionResult> Delete(int id)
+    public async Task<IActionResult> Delete(int id, CancellationToken ct = default)
     {
-        var result = await tagsService.DeleteAsync(id);
+        var result = await tagsService.DeleteAsync(id, ct);
         if (result.Status == ServiceResultStatus.Ok)
             logger.LogInformation("Admin {User} deleted tag {TagId}", User.Identity?.Name ?? "unknown", id);
         return result.ToActionResult(this, NoContent());

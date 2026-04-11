@@ -12,7 +12,7 @@ public class PostsService(AppDbContext db, ILogger<PostsService> logger) : IPost
     private const int MaxSlugLength = 300;
     private const int MaxContentLength = 500_000;
 
-    public async Task<PagedResult<PostSummaryResponse>> GetAllAsync(bool includeUnpublished = false, int page = 1, int pageSize = 10, string? tag = null)
+    public async Task<PagedResult<PostSummaryResponse>> GetAllAsync(bool includeUnpublished = false, int page = 1, int pageSize = 10, string? tag = null, CancellationToken ct = default)
     {
         var query = db.Posts
             .AsNoTracking()
@@ -23,13 +23,13 @@ public class PostsService(AppDbContext db, ILogger<PostsService> logger) : IPost
         if (tag is not null)
             query = query.Where(p => p.Tags.Any(t => t.Slug == tag));
 
-        var totalCount = await query.CountAsync();
+        var totalCount = await query.CountAsync(ct);
 
         var posts = await query
             .OrderByDescending(p => p.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .ToListAsync();
+            .ToListAsync(ct);
 
         var items = posts
             .Select(p => new PostSummaryResponse(
@@ -41,13 +41,13 @@ public class PostsService(AppDbContext db, ILogger<PostsService> logger) : IPost
         return new PagedResult<PostSummaryResponse>(items, page, pageSize, totalCount);
     }
 
-    public async Task<ServiceResult<PostDetailResponse>> GetBySlugAsync(string slug, bool includeUnpublished = false)
+    public async Task<ServiceResult<PostDetailResponse>> GetBySlugAsync(string slug, bool includeUnpublished = false, CancellationToken ct = default)
     {
         var post = await db.Posts
             .AsNoTracking()
             .Include(p => p.Author)
             .Include(p => p.Tags)
-            .FirstOrDefaultAsync(p => p.Slug == slug && (includeUnpublished || p.Published));
+            .FirstOrDefaultAsync(p => p.Slug == slug && (includeUnpublished || p.Published), ct);
 
         if (post is null)
             return ServiceResult<PostDetailResponse>.NotFound($"Post '{slug}' not found.");
@@ -55,21 +55,21 @@ public class PostsService(AppDbContext db, ILogger<PostsService> logger) : IPost
         return ServiceResult<PostDetailResponse>.Ok(ToDetail(post));
     }
 
-    public async Task<ServiceResult<PostDetailResponse>> CreateAsync(CreatePostRequest request, int authorId)
+    public async Task<ServiceResult<PostDetailResponse>> CreateAsync(CreatePostRequest request, int authorId, CancellationToken ct = default)
     {
         var validation = ValidateFields(request.Title, request.Content, request.Slug);
         if (validation is not null) return validation;
 
-        if (await db.Posts.AnyAsync(p => p.Slug == request.Slug))
+        if (await db.Posts.AnyAsync(p => p.Slug == request.Slug, ct))
             return ServiceResult<PostDetailResponse>.Conflict($"Post with slug '{request.Slug}' already exists.");
 
-        var requestedTagIds = request.TagIds.ToList();
-        var tags = await db.Tags.Where(t => requestedTagIds.Contains(t.Id)).ToListAsync();
+        var requestedTagIds = (request.TagIds ?? []).ToList();
+        var tags = await db.Tags.Where(t => requestedTagIds.Contains(t.Id)).ToListAsync(ct);
         var missingIds = requestedTagIds.Except(tags.Select(t => t.Id)).ToList();
         if (missingIds.Count > 0)
             return ServiceResult<PostDetailResponse>.BadRequest($"Tag IDs not found: {string.Join(", ", missingIds)}.");
 
-        var author = await db.Users.FindAsync(authorId);
+        var author = await db.Users.FirstOrDefaultAsync(u => u.Id == authorId, ct);
         if (author is null)
             return ServiceResult<PostDetailResponse>.BadRequest($"Author {authorId} not found.");
         var now = DateTime.UtcNow;
@@ -88,7 +88,7 @@ public class PostsService(AppDbContext db, ILogger<PostsService> logger) : IPost
         db.Posts.Add(post);
         try
         {
-            await db.SaveChangesAsync();
+            await db.SaveChangesAsync(ct);
         }
         catch (DbUpdateException ex) when (ex.InnerException is SqliteException { SqliteErrorCode: SqliteErrorCodes.UniqueConstraintViolation })
         {
@@ -97,7 +97,7 @@ public class PostsService(AppDbContext db, ILogger<PostsService> logger) : IPost
         return ServiceResult<PostDetailResponse>.Ok(ToDetail(post));
     }
 
-    public async Task<ServiceResult<PostDetailResponse>> UpdateAsync(int id, UpdatePostRequest request)
+    public async Task<ServiceResult<PostDetailResponse>> UpdateAsync(int id, UpdatePostRequest request, CancellationToken ct = default)
     {
         var validation = ValidateFields(request.Title, request.Content, request.Slug);
         if (validation is not null) return validation;
@@ -105,12 +105,12 @@ public class PostsService(AppDbContext db, ILogger<PostsService> logger) : IPost
         var post = await db.Posts
             .Include(p => p.Author)
             .Include(p => p.Tags)
-            .FirstOrDefaultAsync(p => p.Id == id);
+            .FirstOrDefaultAsync(p => p.Id == id, ct);
 
         if (post is null)
             return ServiceResult<PostDetailResponse>.NotFound($"Post {id} not found.");
 
-        if (post.Slug != request.Slug && await db.Posts.AnyAsync(p => p.Slug == request.Slug))
+        if (post.Slug != request.Slug && await db.Posts.AnyAsync(p => p.Slug == request.Slug, ct))
             return ServiceResult<PostDetailResponse>.Conflict($"Post with slug '{request.Slug}' already exists.");
 
         post.Title = request.Title;
@@ -118,8 +118,8 @@ public class PostsService(AppDbContext db, ILogger<PostsService> logger) : IPost
         post.Slug = request.Slug;
         post.Published = request.Published;
         post.UpdatedAt = DateTime.UtcNow;
-        var updatedTagIds = request.TagIds.ToList();
-        var updatedTags = await db.Tags.Where(t => updatedTagIds.Contains(t.Id)).ToListAsync();
+        var updatedTagIds = (request.TagIds ?? []).ToList();
+        var updatedTags = await db.Tags.Where(t => updatedTagIds.Contains(t.Id)).ToListAsync(ct);
         var missingTagIds = updatedTagIds.Except(updatedTags.Select(t => t.Id)).ToList();
         if (missingTagIds.Count > 0)
             return ServiceResult<PostDetailResponse>.BadRequest($"Tag IDs not found: {string.Join(", ", missingTagIds)}.");
@@ -128,7 +128,7 @@ public class PostsService(AppDbContext db, ILogger<PostsService> logger) : IPost
 
         try
         {
-            await db.SaveChangesAsync();
+            await db.SaveChangesAsync(ct);
         }
         catch (DbUpdateException ex) when (ex.InnerException is SqliteException { SqliteErrorCode: SqliteErrorCodes.UniqueConstraintViolation })
         {
@@ -137,14 +137,14 @@ public class PostsService(AppDbContext db, ILogger<PostsService> logger) : IPost
         return ServiceResult<PostDetailResponse>.Ok(ToDetail(post));
     }
 
-    public async Task<ServiceResult> DeleteAsync(int id)
+    public async Task<ServiceResult> DeleteAsync(int id, CancellationToken ct = default)
     {
-        var post = await db.Posts.FindAsync(id);
+        var post = await db.Posts.FirstOrDefaultAsync(p => p.Id == id, ct);
         if (post is null)
             return ServiceResult.NotFound($"Post {id} not found.");
 
         db.Posts.Remove(post);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(ct);
         logger.LogInformation("Post {Id} ({Slug}) deleted", post.Id, post.Slug);
         return ServiceResult.Ok();
     }
