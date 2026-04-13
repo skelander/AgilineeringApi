@@ -26,7 +26,7 @@ public class SitemapController(IPostsService postsService, IConfiguration config
         {
             var escapedSlug = System.Security.SecurityElement.Escape(post.Slug);
             var escapedBase = System.Security.SecurityElement.Escape(baseUrl);
-            sb.AppendLine($"  <url><loc>{escapedBase}/post/{escapedSlug}</loc></url>");
+            sb.AppendLine($"  <url><loc>{escapedBase}/blog/{escapedSlug}</loc></url>");
         }
         sb.AppendLine("</urlset>");
 

@@ -27,7 +27,7 @@ public class RssController(IPostsService postsService, IConfiguration config, IL
 
         var items = result.Items.Select(post =>
         {
-            var url = $"{siteUrl}/post/{post.Slug}";
+            var url = $"{siteUrl}/blog/{post.Slug}";
             return new XElement("item",
                 new XElement("title", post.Title),
                 new XElement("link", url),
