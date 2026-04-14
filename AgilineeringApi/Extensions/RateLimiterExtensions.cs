@@ -31,13 +31,26 @@ internal static class RateLimiterExtensions
         int defaultLimit)
     {
         options.AddPolicy(policyName, context =>
-            RateLimitPartition.GetFixedWindowLimiter(
-                context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        {
+            var ip = context.Connection.RemoteIpAddress?.ToString();
+            if (ip is null)
+            {
+                var logger = context.RequestServices
+                    .GetRequiredService<ILoggerFactory>()
+                    .CreateLogger(nameof(RateLimiterExtensions));
+                logger.LogWarning(
+                    "Rate limiter: RemoteIpAddress is null for policy {Policy} — request bucketed under 'unknown', which may bypass per-IP limiting",
+                    policyName);
+            }
+
+            return RateLimitPartition.GetFixedWindowLimiter(
+                ip ?? "unknown",
                 _ => new FixedWindowRateLimiterOptions
                 {
                     Window = TimeSpan.FromMinutes(1),
                     PermitLimit = configuration.GetValue(configKey, defaultLimit),
                     QueueLimit = 0,
-                }));
+                });
+        });
     }
 }

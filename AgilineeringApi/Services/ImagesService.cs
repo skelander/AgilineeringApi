@@ -52,7 +52,7 @@ public class ImagesService(AppDbContext db, IOptions<ImagesOptions> imagesOption
 
         var maxFileSize = imagesOptions.Value.MaxFileSizeBytes;
         if (file.Length > maxFileSize)
-            return ServiceResult<string>.BadRequest($"File must be {maxFileSize / (1024 * 1024)} MB or smaller.");
+            return ServiceResult<string>.BadRequest($"File must be {maxFileSize / (1024d * 1024d):F0} MB or smaller.");
 
         var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
         if (!AllowedExtensions.Contains(ext))
