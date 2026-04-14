@@ -127,6 +127,7 @@ Dessa regler gäller **alltid** — vid ny kod, ändringar och kodgranskning.
 - **Inga kommenterade kodblockar** — ta bort, inte kommentera ut
 - **DRY** — upprepa inte logik; bryt ut till hjälpmetod eller service
 - **Kommentarer** förklarar *varför*, inte *vad* — om koden behöver förklaras är det ett tecken på att den ska skrivas om
+- **Fail fast** — validera vid systemgränser och returnera fel tidigt; propagera inte ogiltigt tillstånd inåt i systemet
 
 ## 3. Clean Architecture
 
@@ -159,13 +160,20 @@ Dessa regler gäller **alltid** — vid ny kod, ändringar och kodgranskning.
 - JWT-nyckel kommer alltid från konfiguration/miljövariabel — aldrig hårdkodad
 - User enumeration undviks — samma felmeddelande för "fel användare" och "fel lösenord"
 
-## 6. Async/Await
+## 6. Observabilitet
+
+- Logga med strukturerade message templates — aldrig string interpolation (`LogInformation("User {UserId} logged in", id)`)
+- Felloggar ska inkludera tillräcklig kontext för att debugga utan debugger (vad, vem, varför det misslyckades)
+- Oväntade fel loggas på `LogError` eller `LogWarning` — förväntade/normala flöden på `LogDebug`/`LogInformation`
+- Inga tysta fel — om något går fel ska det synas i loggarna
+
+## 7. Async/Await
 
 - Alla databasanrop är asynkrona (`await db.X.ToListAsync()` etc.)
 - Inga `.Result` eller `.Wait()`
 - Inga `async void` (undantag: event handlers)
 
-## 7. Granskning före commit
+## 8. Granskning före commit
 
 **Obligatoriskt efter varje ny feature eller ändring, innan commit.**
 
@@ -181,7 +189,9 @@ Gå igenom dessa punkter för den kod som skrivits:
 
 Granskningen tar 2–3 minuter och är inte valfri.
 
-## 8. Schema-ändringar (SQLite)
+> **Slutfråga:** Skulle en ny utvecklare kunna förstå, ändra och lita på den här koden utan att behöva fråga någon? Om nej — se över namngivning, struktur, tester eller felhantering.
+
+## 9. Schema-ändringar (SQLite)
 
 - `EnsureCreated` skapar schemat vid ny DB — migrations används inte
 - Vid ny kolumn: lägg till ALTER TABLE-shim i `DatabaseMigrator.Apply()`
