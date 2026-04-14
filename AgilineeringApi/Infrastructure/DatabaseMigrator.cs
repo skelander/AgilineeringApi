@@ -66,7 +66,8 @@ public class DatabaseMigrator(AppDbContext db, ILogger<DatabaseMigrator> logger)
         catch (SqliteException ex) when (ex.SqliteErrorCode == 1 &&
             (ex.Message.Contains("duplicate column name") || ex.Message.Contains("no such column")))
         {
-            // Already in target state — expected when re-running migrations on an up-to-date database
+            // Already in target state — expected when re-running on an up-to-date database
+            logger.LogDebug("Schema change skipped (already applied): {Sql}", sql);
         }
         catch (Exception ex)
         {

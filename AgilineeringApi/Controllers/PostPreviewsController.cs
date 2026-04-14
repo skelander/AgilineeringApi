@@ -21,22 +21,11 @@ public class PostPreviewsController(IPostPreviewService previewService) : Contro
     [EnableRateLimiting("write")]
     public async Task<IActionResult> Create(int postId, [FromBody] CreatePreviewRequest request, CancellationToken ct = default)
     {
-        var validationError = ValidatePassword(request.Password);
+        var validationError = PreviewPasswordValidator.Validate(request.Password, this);
         if (validationError is not null) return validationError;
 
         var result = await previewService.CreateAsync(postId, request, ct);
         return result.ToActionResult(this, value => StatusCode(201, value));
-    }
-
-    private IActionResult? ValidatePassword(string password)
-    {
-        if (string.IsNullOrWhiteSpace(password))
-            return BadRequest(new { error = "Password is required." });
-        if (password.Length < 6)
-            return BadRequest(new { error = "Password must be at least 6 characters." });
-        if (password.Length > SecurityConstants.MaxPasswordLength)
-            return BadRequest(new { error = $"Password must be {SecurityConstants.MaxPasswordLength} characters or fewer." });
-        return null;
     }
 }
 
@@ -56,7 +45,7 @@ public class PostPreviewAccessController(IPostPreviewService previewService) : C
     [EnableRateLimiting("login")]
     public async Task<IActionResult> Access(string token, [FromBody] PreviewAccessRequest request, CancellationToken ct = default)
     {
-        var validationError = ValidatePassword(request.Password);
+        var validationError = PreviewPasswordValidator.Validate(request.Password, this);
         if (validationError is not null) return validationError;
 
         var result = await previewService.AccessAsync(token, request, ct);
@@ -75,7 +64,7 @@ public class PostPreviewAccessController(IPostPreviewService previewService) : C
     [EnableRateLimiting("read")]
     public async Task<IActionResult> GetComments(string token, [FromBody] PreviewAccessRequest request, CancellationToken ct = default)
     {
-        var validationError = ValidatePassword(request.Password);
+        var validationError = PreviewPasswordValidator.Validate(request.Password, this);
         if (validationError is not null) return validationError;
 
         var result = await previewService.GetCommentsAsync(token, request, ct);
@@ -94,12 +83,12 @@ public class PostPreviewAccessController(IPostPreviewService previewService) : C
     [EnableRateLimiting("write")]
     public async Task<IActionResult> AddComment(string token, [FromBody] CreateCommentRequest request, CancellationToken ct = default)
     {
-        var validationError = ValidatePassword(request.Password);
+        var validationError = PreviewPasswordValidator.Validate(request.Password, this);
         if (validationError is not null) return validationError;
         if (string.IsNullOrWhiteSpace(request.Body))
             return BadRequest(new { error = "Comment body is required." });
-        if (request.Body.Length > 5000)
-            return BadRequest(new { error = "Comment must be 5000 characters or fewer." });
+        if (request.Body.Length > SecurityConstants.MaxCommentBodyLength)
+            return BadRequest(new { error = $"Comment must be {SecurityConstants.MaxCommentBodyLength} characters or fewer." });
 
         var result = await previewService.AddCommentAsync(token, request, ct);
         return result.Status switch
@@ -114,14 +103,4 @@ public class PostPreviewAccessController(IPostPreviewService previewService) : C
         };
     }
 
-    private IActionResult? ValidatePassword(string password)
-    {
-        if (string.IsNullOrWhiteSpace(password))
-            return BadRequest(new { error = "Password is required." });
-        if (password.Length < 6)
-            return BadRequest(new { error = "Password must be at least 6 characters." });
-        if (password.Length > SecurityConstants.MaxPasswordLength)
-            return BadRequest(new { error = $"Password must be {SecurityConstants.MaxPasswordLength} characters or fewer." });
-        return null;
-    }
 }

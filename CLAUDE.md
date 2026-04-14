@@ -19,6 +19,11 @@ AgilineeringApi/
                  IImagesService, IPostPreviewService + impl, ServiceResult<T>
   Models/        User, Post, Tag, Image, PostPreview, PreviewComment
   Data/          AppDbContext
+  Extensions/    ClaimsPrincipalExtensions, ServiceResultExtensions,
+                 RateLimiterExtensions, PreviewPasswordValidator
+  Options/       SecurityOptions, SecurityOptionsValidator,
+                 JwtOptions, ImagesOptions
+  Infrastructure/ DatabaseMigrator, DataSeeder, AdminKeyMiddleware
   Program.cs
 
 AgilineeringApi.Tests/
@@ -33,6 +38,9 @@ AgilineeringApi.Tests/
   PostPreviewControllerTests.cs
   CommentsTests.cs
   SitemapRssTests.cs
+  AdminKeyMiddlewareTests.cs
+  ValidationBoundaryTests.cs
+  SitemapRssMissingConfigTests.cs
 ```
 
 ## API Endpoints
@@ -51,8 +59,8 @@ AgilineeringApi.Tests/
 - `GET /posts/{postId}/previews` — kräver JWT (admin), listar förhandsvisningar
 - `POST /posts/{postId}/previews` — kräver JWT (admin), skapar förhandsvisning
 - `GET /posts/preview/{token}` — publikt, kontrollerar token
-- `POST /posts/preview/{token}` — publikt med lösenord, hämtar post
-- `GET /posts/preview/{token}/comments` — publikt med lösenord
+- `POST /posts/preview/{token}/access` — publikt med lösenord, hämtar post
+- `POST /posts/preview/{token}/comments/list` — publikt med lösenord, hämtar kommentarer
 - `POST /posts/preview/{token}/comments` — publikt med lösenord, lägger till kommentar
 - `GET /sitemap.xml` — publikt
 - `GET /rss.xml` — publikt
@@ -77,7 +85,8 @@ AgilineeringApi.Tests/
 - Tester som muterar user-state (lockout) ligger i **separata klasser med egen fixture**
 
 ## Kommandon
-- Testa: `& 'C:\Program Files\dotnet\dotnet.exe' test 'C:\Users\Rikard\AgilineeringApi\AgilineeringApi.Tests\AgilineeringApi.Tests.csproj'`
+
+- Testa: `dotnet test AgilineeringApi.Tests/AgilineeringApi.Tests.csproj`
 - Deploy: push till main → GitHub Actions bygger och deployar till Fly.io
 
 ## Infrastruktur
@@ -156,7 +165,7 @@ Dessa regler gäller **alltid** — vid ny kod, ändringar och kodgranskning.
 - Inga `.Result` eller `.Wait()`
 - Inga `async void` (undantag: event handlers)
 
-## 8. Granskning före commit
+## 7. Granskning före commit
 
 **Obligatoriskt efter varje ny feature eller ändring, innan commit.**
 
@@ -172,8 +181,8 @@ Gå igenom dessa punkter för den kod som skrivits:
 
 Granskningen tar 2–3 minuter och är inte valfri.
 
-## 7. Schema-ändringar (SQLite)
+## 8. Schema-ändringar (SQLite)
 
 - `EnsureCreated` skapar schemat vid ny DB — migrations används inte
-- Vid ny kolumn: lägg till ALTER TABLE-shim i `ApplySchemaChanges()` i `Program.cs`
+- Vid ny kolumn: lägg till ALTER TABLE-shim i `DatabaseMigrator.Apply()`
 - Shims är idempotenta (try/catch ignorerar "column already exists")

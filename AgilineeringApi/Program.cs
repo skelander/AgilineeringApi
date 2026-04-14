@@ -3,6 +3,7 @@ using AgilineeringApi.Data;
 using AgilineeringApi.Extensions;
 using AgilineeringApi.Infrastructure;
 using AgilineeringApi.Options;
+using Microsoft.Extensions.Options;
 using AgilineeringApi.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -27,6 +28,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.Configure<SecurityOptions>(builder.Configuration.GetSection("Security"));
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
 builder.Services.Configure<ImagesOptions>(builder.Configuration.GetSection("Images"));
+builder.Services.AddSingleton<IValidateOptions<SecurityOptions>, SecurityOptionsValidator>();
 
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IPostsService, PostsService>();

@@ -96,16 +96,18 @@ public class ImagesService(AppDbContext db, IOptions<ImagesOptions> imagesOption
         if (!MagicBytes.TryGetValue(ext, out var checks))
             return false;
 
-        bool MatchesAll() => checks.All(c =>
+        bool AllChecksMatch() => checks.All(c =>
             data.Length >= c.Offset + c.Item2.Length &&
             data.AsSpan(c.Offset, c.Item2.Length).SequenceEqual(c.Item2));
 
+        // Some formats (e.g. GIF) have multiple alternative magic byte sequences, all at offset 0.
+        // Other formats (e.g. WEBP) require multiple checks at different offsets that must ALL match.
         var hasAlternatives = checks.Length > 1 && checks.All(c => c.Offset == 0);
         if (hasAlternatives)
             return checks.Any(c =>
                 data.Length >= c.Item2.Length &&
                 data.AsSpan(0, c.Item2.Length).SequenceEqual(c.Item2));
 
-        return MatchesAll();
+        return AllChecksMatch();
     }
 }

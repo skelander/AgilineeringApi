@@ -8,7 +8,9 @@ internal static class SecurityConstants
     // not to enforce BCrypt correctness — the truncation is an accepted limitation.
     internal const int MaxPasswordLength = 1000;
     internal const int MaxUsernameLength = 200;
+    internal const int MaxCommentBodyLength = 5000;
     // Guid.NewGuid().ToString("N") always produces exactly this many hex characters.
     // AppDbContext.HasMaxLength must match this value.
     internal const int PreviewTokenLength = 32;
+    internal const int MaxSitemapUrls = 1000;
 }

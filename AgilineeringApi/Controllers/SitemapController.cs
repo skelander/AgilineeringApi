@@ -17,7 +17,7 @@ public class SitemapController(IPostsService postsService, IConfiguration config
         }
         var baseUrl = siteBaseUrl.TrimEnd('/');
 
-        var result = await postsService.GetAllAsync(includeUnpublished: false, page: 1, pageSize: 1000, ct: ct);
+        var result = await postsService.GetAllAsync(includeUnpublished: false, page: 1, pageSize: SecurityConstants.MaxSitemapUrls, ct: ct);
 
         var sb = new System.Text.StringBuilder();
         sb.AppendLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
