@@ -1,6 +1,6 @@
 namespace AgilineeringApi.Services;
 
-public record PostSummaryResponse(int Id, string Title, string Slug, bool Published, DateTime CreatedAt, string AuthorUsername, IEnumerable<TagResponse> Tags);
+public record PostSummaryResponse(int Id, string Title, string Slug, bool Published, DateTime CreatedAt, string AuthorUsername, IEnumerable<TagResponse> Tags, int PreviewCommentCount = 0);
 public record PostDetailResponse(int Id, string Title, string Content, string Slug, bool Published, DateTime CreatedAt, DateTime UpdatedAt, string AuthorUsername, IEnumerable<TagResponse> Tags);
 public record CreatePostRequest(string Title, string Content, string Slug, bool Published, IEnumerable<int>? TagIds = null);
 public record UpdatePostRequest(string Title, string Content, string Slug, bool Published, IEnumerable<int>? TagIds = null);

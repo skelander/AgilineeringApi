@@ -31,11 +31,22 @@ public class PostsService(AppDbContext db, ILogger<PostsService> logger) : IPost
             .Take(pageSize)
             .ToListAsync(ct);
 
+        var postIds = posts.Where(p => !p.Published).Select(p => p.Id).ToList();
+        var commentCounts = postIds.Count > 0
+            ? await db.PreviewComments
+                .Join(db.PostPreviews, c => c.PreviewId, pp => pp.Id, (c, pp) => pp.PostId)
+                .Where(postId => postIds.Contains(postId))
+                .GroupBy(postId => postId)
+                .Select(g => new { PostId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.PostId, x => x.Count, ct)
+            : [];
+
         var items = posts
             .Select(p => new PostSummaryResponse(
                 p.Id, p.Title, p.Slug, p.Published, p.CreatedAt,
                 p.Author.Username,
-                p.Tags.Select(t => new TagResponse(t.Id, t.Name, t.Slug)).ToList()))
+                p.Tags.Select(t => new TagResponse(t.Id, t.Name, t.Slug)).ToList(),
+                commentCounts.GetValueOrDefault(p.Id)))
             .ToList();
 
         return new PagedResult<PostSummaryResponse>(items, page, pageSize, totalCount);
