@@ -93,6 +93,48 @@ public class PostPreviewService(AppDbContext db, ILogger<PostPreviewService> log
         return ServiceResult<CommentResponse>.Ok(new CommentResponse(comment.Id, comment.Body, comment.CreatedAt));
     }
 
+    public async Task<ServiceResult<CommentResponse>> UpdateCommentAsync(string token, int commentId, UpdateCommentRequest request, CancellationToken ct = default)
+    {
+        var preview = await db.PostPreviews.AsNoTracking().FirstOrDefaultAsync(pp => pp.Token == token, ct);
+        if (preview is null)
+            return ServiceResult<CommentResponse>.NotFound("Preview not found.");
+
+        if (!VerifyCredentials(preview, request.Password))
+        {
+            logger.LogWarning("Failed comment update attempt for token {Token}", token);
+            return ServiceResult<CommentResponse>.Forbidden("Invalid credentials.");
+        }
+
+        var comment = await db.PreviewComments.FirstOrDefaultAsync(c => c.Id == commentId && c.PreviewId == preview.Id, ct);
+        if (comment is null)
+            return ServiceResult<CommentResponse>.NotFound("Comment not found.");
+
+        comment.Body = request.Body;
+        await db.SaveChangesAsync(ct);
+        return ServiceResult<CommentResponse>.Ok(new CommentResponse(comment.Id, comment.Body, comment.CreatedAt));
+    }
+
+    public async Task<ServiceResult> DeleteCommentAsync(string token, int commentId, DeleteCommentRequest request, CancellationToken ct = default)
+    {
+        var preview = await db.PostPreviews.AsNoTracking().FirstOrDefaultAsync(pp => pp.Token == token, ct);
+        if (preview is null)
+            return ServiceResult.NotFound("Preview not found.");
+
+        if (!VerifyCredentials(preview, request.Password))
+        {
+            logger.LogWarning("Failed comment delete attempt for token {Token}", token);
+            return ServiceResult.Forbidden("Invalid credentials.");
+        }
+
+        var comment = await db.PreviewComments.FirstOrDefaultAsync(c => c.Id == commentId && c.PreviewId == preview.Id, ct);
+        if (comment is null)
+            return ServiceResult.NotFound("Comment not found.");
+
+        db.PreviewComments.Remove(comment);
+        await db.SaveChangesAsync(ct);
+        return ServiceResult.Ok();
+    }
+
     public async Task<ServiceResult<IEnumerable<CommentResponse>>> GetCommentsAsync(string token, PreviewAccessRequest request, CancellationToken ct = default)
     {
         var preview = await db.PostPreviews.AsNoTracking().FirstOrDefaultAsync(pp => pp.Token == token, ct);

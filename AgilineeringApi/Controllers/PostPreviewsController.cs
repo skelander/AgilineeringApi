@@ -94,11 +94,47 @@ public class PostPreviewAccessController(IPostPreviewService previewService) : C
         return result.Status switch
         {
             ServiceResultStatus.Ok => StatusCode(201, result.Value),
-            // Return the same 401 for both missing token and wrong credentials
-            // to prevent token enumeration via status code differences
             ServiceResultStatus.NotFound or ServiceResultStatus.Forbidden =>
                 Unauthorized(new { error = "Invalid token or credentials." }),
             ServiceResultStatus.BadRequest => BadRequest(new { error = result.Error }),
+            _ => StatusCode(500)
+        };
+    }
+
+    [HttpPut("{token}/comments/{commentId:int}")]
+    [EnableRateLimiting("write")]
+    public async Task<IActionResult> UpdateComment(string token, int commentId, [FromBody] UpdateCommentRequest request, CancellationToken ct = default)
+    {
+        var validationError = PreviewPasswordValidator.Validate(request.Password, this);
+        if (validationError is not null) return validationError;
+        if (string.IsNullOrWhiteSpace(request.Body))
+            return BadRequest(new { error = "Comment body is required." });
+        if (request.Body.Length > SecurityConstants.MaxCommentBodyLength)
+            return BadRequest(new { error = $"Comment must be {SecurityConstants.MaxCommentBodyLength} characters or fewer." });
+
+        var result = await previewService.UpdateCommentAsync(token, commentId, request, ct);
+        return result.Status switch
+        {
+            ServiceResultStatus.Ok => Ok(result.Value),
+            ServiceResultStatus.NotFound or ServiceResultStatus.Forbidden =>
+                Unauthorized(new { error = "Invalid token or credentials." }),
+            _ => StatusCode(500)
+        };
+    }
+
+    [HttpDelete("{token}/comments/{commentId:int}")]
+    [EnableRateLimiting("write")]
+    public async Task<IActionResult> DeleteComment(string token, int commentId, [FromBody] DeleteCommentRequest request, CancellationToken ct = default)
+    {
+        var validationError = PreviewPasswordValidator.Validate(request.Password, this);
+        if (validationError is not null) return validationError;
+
+        var result = await previewService.DeleteCommentAsync(token, commentId, request, ct);
+        return result.Status switch
+        {
+            ServiceResultStatus.Ok => NoContent(),
+            ServiceResultStatus.NotFound or ServiceResultStatus.Forbidden =>
+                Unauthorized(new { error = "Invalid token or credentials." }),
             _ => StatusCode(500)
         };
     }
