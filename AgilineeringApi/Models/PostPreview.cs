@@ -8,4 +8,5 @@ public class PostPreview
     public required string Token { get; set; }
     public required string PasswordHash { get; set; }
     public DateTime CreatedAt { get; set; }
+    public DateTime? LastAccessedAt { get; set; }
 }

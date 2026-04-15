@@ -40,7 +40,6 @@ public class PostPreviewService(AppDbContext db, ILogger<PostPreviewService> log
     public async Task<ServiceResult<PostDetailResponse>> AccessAsync(string token, PreviewAccessRequest request, CancellationToken ct = default)
     {
         var preview = await db.PostPreviews
-            .AsNoTracking()
             .Include(pp => pp.Post).ThenInclude(p => p.Author)
             .Include(pp => pp.Post).ThenInclude(p => p.Tags)
             .FirstOrDefaultAsync(pp => pp.Token == token, ct);
@@ -53,6 +52,9 @@ public class PostPreviewService(AppDbContext db, ILogger<PostPreviewService> log
             logger.LogWarning("Failed preview access attempt for token {Token}", token);
             return ServiceResult<PostDetailResponse>.Forbidden("Invalid credentials.");
         }
+
+        preview.LastAccessedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
 
         logger.LogInformation("Preview accessed for token {Token}", token);
         var post = preview.Post;
@@ -129,7 +131,7 @@ public class PostPreviewService(AppDbContext db, ILogger<PostPreviewService> log
 
         var commentsLookup = comments.ToLookup(c => c.PreviewId);
         return previews.Select(pp => new PreviewWithCommentsResponse(
-            pp.Id, pp.Token, pp.CreatedAt,
+            pp.Id, pp.Token, pp.CreatedAt, pp.LastAccessedAt,
             commentsLookup[pp.Id].Select(c => new CommentResponse(c.Id, c.Body, c.CreatedAt))));
     }
 

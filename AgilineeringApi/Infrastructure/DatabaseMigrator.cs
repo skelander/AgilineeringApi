@@ -13,6 +13,7 @@ public class DatabaseMigrator(AppDbContext db, ILogger<DatabaseMigrator> logger)
         TryAlterTable("ALTER TABLE Users ADD COLUMN FailedLoginAttempts INTEGER NOT NULL DEFAULT 0");
         TryAlterTable("ALTER TABLE Users ADD COLUMN LockoutEnd TEXT NULL");
         TryAlterTable("ALTER TABLE PostPreviews DROP COLUMN Name");
+        TryAlterTable("ALTER TABLE PostPreviews ADD COLUMN LastAccessedAt TEXT NULL");
 
         db.Database.ExecuteSqlRaw("""
             CREATE TABLE IF NOT EXISTS PostPreviews (
