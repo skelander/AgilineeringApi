@@ -11,9 +11,14 @@ public class TagsService(AppDbContext db) : ITagsService
     private const int MaxSlugLength = 100;
 
     public async Task<List<TagResponse>> GetAllAsync(CancellationToken ct = default) =>
-        await db.Tags
-            .OrderBy(t => t.Name)
-            .Select(t => new TagResponse(t.Id, t.Name, t.Slug))
+        await (from t in db.Tags
+               orderby t.Name
+               select new TagResponse(t.Id, t.Name, t.Slug,
+                   db.Images
+                       .Where(i => i.TagId == t.Id)
+                       .OrderByDescending(i => i.CreatedAt)
+                       .Select(i => "/images/" + i.Filename)
+                       .FirstOrDefault()))
             .ToListAsync(ct);
 
     public async Task<ServiceResult<TagResponse>> CreateAsync(CreateTagRequest request, CancellationToken ct = default)

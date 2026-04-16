@@ -9,4 +9,6 @@ public class Image
     public required byte[] Data { get; set; }
     public long Size { get; set; }
     public DateTime CreatedAt { get; set; }
+    public int? TagId { get; set; }
+    public Tag? Tag { get; set; }
 }

@@ -50,6 +50,23 @@ public class ImagesController(IImagesService imagesService, ILogger<ImagesContro
         return NoContent();
     }
 
+    [HttpPatch("{filename}")]
+    [Authorize(Roles = "admin")]
+    [EnableRateLimiting("write")]
+    public async Task<IActionResult> SetTag(string filename, [FromBody] SetImageTagRequest request, CancellationToken ct = default)
+    {
+        var safeFilename = Path.GetFileName(filename);
+        if (safeFilename != filename)
+            return BadRequest(new { error = "Invalid filename." });
+
+        var result = await imagesService.SetTagAsync(safeFilename, request.TagId, ct);
+        return result.Status switch
+        {
+            ServiceResultStatus.NotFound => NotFound(new { error = result.Error }),
+            _ => NoContent()
+        };
+    }
+
     [HttpPost]
     [Authorize(Roles = "admin")]
     [EnableRateLimiting("write")]

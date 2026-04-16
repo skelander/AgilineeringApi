@@ -63,6 +63,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasIndex(i => i.Filename).IsUnique();
             entity.Property(i => i.Filename).HasMaxLength(260);
             entity.Property(i => i.ContentType).HasMaxLength(100);
+            entity.HasOne(i => i.Tag)
+                .WithMany()
+                .HasForeignKey(i => i.TagId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<PostPreview>(entity =>

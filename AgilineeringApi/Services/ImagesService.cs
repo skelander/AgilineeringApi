@@ -33,7 +33,7 @@ public class ImagesService(AppDbContext db, IOptions<ImagesOptions> imagesOption
     public async Task<IEnumerable<ImageListItem>> ListAsync(CancellationToken ct = default) =>
         await db.Images
             .OrderByDescending(i => i.CreatedAt)
-            .Select(i => new ImageListItem(i.Filename, i.OriginalFilename, $"/images/{i.Filename}", i.Size, i.CreatedAt))
+            .Select(i => new ImageListItem(i.Filename, i.OriginalFilename, $"/images/{i.Filename}", i.Size, i.CreatedAt, i.TagId, i.Tag != null ? i.Tag.Name : null))
             .ToListAsync(ct);
 
     public async Task<(byte[] Data, string ContentType)?> GetAsync(string filename, CancellationToken ct = default)
@@ -89,6 +89,21 @@ public class ImagesService(AppDbContext db, IOptions<ImagesOptions> imagesOption
         db.Images.Remove(image);
         await db.SaveChangesAsync(ct);
         logger.LogInformation("Image {Filename} removed", filename);
+        return ServiceResult.Ok();
+    }
+
+    public async Task<ServiceResult> SetTagAsync(string filename, int? tagId, CancellationToken ct = default)
+    {
+        var image = await db.Images.FirstOrDefaultAsync(i => i.Filename == filename, ct);
+        if (image is null)
+            return ServiceResult.NotFound("Image not found.");
+
+        if (tagId.HasValue && !await db.Tags.AnyAsync(t => t.Id == tagId.Value, ct))
+            return ServiceResult.NotFound("Tag not found.");
+
+        image.TagId = tagId;
+        await db.SaveChangesAsync(ct);
+        logger.LogInformation("Image {Filename} tag set to {TagId}", filename, tagId);
         return ServiceResult.Ok();
     }
 
