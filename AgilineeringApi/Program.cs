@@ -78,7 +78,7 @@ builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>
         policy.WithOrigins(corsOrigins)
               .WithHeaders("Content-Type", "X-Admin-Key")
-              .WithMethods("GET", "POST", "PUT", "DELETE")
+              .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE")
               .AllowCredentials()));
 
 builder.Services.AddResponseCaching();
