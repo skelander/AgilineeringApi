@@ -14,6 +14,7 @@ public class DatabaseMigrator(AppDbContext db, ILogger<DatabaseMigrator> logger)
         TryAlterTable("ALTER TABLE Users ADD COLUMN LockoutEnd TEXT NULL");
         TryAlterTable("ALTER TABLE PostPreviews DROP COLUMN Name");
         TryAlterTable("ALTER TABLE PostPreviews ADD COLUMN LastAccessedAt TEXT NULL");
+        TryAlterTable("ALTER TABLE Images ADD COLUMN OriginalFilename TEXT NOT NULL DEFAULT ''");
 
         db.Database.ExecuteSqlRaw("""
             CREATE TABLE IF NOT EXISTS PostPreviews (

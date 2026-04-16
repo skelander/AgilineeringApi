@@ -33,7 +33,7 @@ public class ImagesService(AppDbContext db, IOptions<ImagesOptions> imagesOption
     public async Task<IEnumerable<ImageListItem>> ListAsync(CancellationToken ct = default) =>
         await db.Images
             .OrderByDescending(i => i.CreatedAt)
-            .Select(i => new ImageListItem(i.Filename, $"/images/{i.Filename}", i.Size, i.CreatedAt))
+            .Select(i => new ImageListItem(i.Filename, i.OriginalFilename, $"/images/{i.Filename}", i.Size, i.CreatedAt))
             .ToListAsync(ct);
 
     public async Task<(byte[] Data, string ContentType)?> GetAsync(string filename, CancellationToken ct = default)
@@ -69,6 +69,7 @@ public class ImagesService(AppDbContext db, IOptions<ImagesOptions> imagesOption
         db.Images.Add(new Image
         {
             Filename = filename,
+            OriginalFilename = file.FileName,
             ContentType = ContentTypes[ext],
             Data = data,
             Size = data.Length,
