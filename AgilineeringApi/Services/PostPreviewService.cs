@@ -90,6 +90,7 @@ public class PostPreviewService(AppDbContext db, ILogger<PostPreviewService> log
         };
         db.PreviewComments.Add(comment);
         await db.SaveChangesAsync(ct);
+        logger.LogInformation("Comment {CommentId} added to preview {Token}", comment.Id, token);
         return ServiceResult<CommentResponse>.Ok(new CommentResponse(comment.Id, comment.Body, comment.CreatedAt));
     }
 
@@ -111,6 +112,7 @@ public class PostPreviewService(AppDbContext db, ILogger<PostPreviewService> log
 
         comment.Body = request.Body;
         await db.SaveChangesAsync(ct);
+        logger.LogInformation("Comment {CommentId} updated on preview {Token}", commentId, token);
         return ServiceResult<CommentResponse>.Ok(new CommentResponse(comment.Id, comment.Body, comment.CreatedAt));
     }
 
@@ -132,6 +134,7 @@ public class PostPreviewService(AppDbContext db, ILogger<PostPreviewService> log
 
         db.PreviewComments.Remove(comment);
         await db.SaveChangesAsync(ct);
+        logger.LogInformation("Comment {CommentId} deleted from preview {Token}", commentId, token);
         return ServiceResult.Ok();
     }
 

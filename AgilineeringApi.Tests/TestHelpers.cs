@@ -16,4 +16,13 @@ public static class TestHelpers
     {
         await client.PostAsync("/auth/logout", null);
     }
+
+    public static Task<HttpResponseMessage> DeleteAsJsonAsync<T>(this HttpClient client, string requestUri, T value)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Delete, requestUri)
+        {
+            Content = JsonContent.Create(value)
+        };
+        return client.SendAsync(request);
+    }
 }

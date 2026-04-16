@@ -108,6 +108,139 @@ public class CommentsTests : IClassFixture<AgilineeringFactory>
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
+    // --- UpdateComment ---
+
+    [Fact]
+    public async Task UpdateComment_ValidCredentials_Returns200WithUpdatedBody()
+    {
+        var (_, token) = await CreatePreviewAsync("comment-update-ok");
+        var addResp = await _client.PostAsJsonAsync($"/posts/preview/{token}/comments",
+            new CreateCommentRequest("secret123", "Original body"));
+        var comment = await addResp.Content.ReadFromJsonAsync<CommentResponse>();
+
+        var response = await _client.PutAsJsonAsync($"/posts/preview/{token}/comments/{comment!.Id}",
+            new UpdateCommentRequest("secret123", "Updated body"));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var updated = await response.Content.ReadFromJsonAsync<CommentResponse>();
+        Assert.Equal("Updated body", updated!.Body);
+        Assert.Equal(comment.Id, updated.Id);
+        Assert.Equal(comment.CreatedAt, updated.CreatedAt);
+    }
+
+    [Fact]
+    public async Task UpdateComment_WrongPassword_Returns401()
+    {
+        var (_, token) = await CreatePreviewAsync("comment-update-badpw");
+        var addResp = await _client.PostAsJsonAsync($"/posts/preview/{token}/comments",
+            new CreateCommentRequest("secret123", "Original"));
+        var comment = await addResp.Content.ReadFromJsonAsync<CommentResponse>();
+
+        var response = await _client.PutAsJsonAsync($"/posts/preview/{token}/comments/{comment!.Id}",
+            new UpdateCommentRequest("wrongpassword", "Updated"));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateComment_NonExistentComment_Returns401()
+    {
+        var (_, token) = await CreatePreviewAsync("comment-update-notfound");
+
+        var response = await _client.PutAsJsonAsync($"/posts/preview/{token}/comments/99999",
+            new UpdateCommentRequest("secret123", "Updated"));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task UpdateComment_EmptyBody_Returns400(string body)
+    {
+        var (_, token) = await CreatePreviewAsync($"comment-update-emptybody-{body.Length}");
+        var addResp = await _client.PostAsJsonAsync($"/posts/preview/{token}/comments",
+            new CreateCommentRequest("secret123", "Original"));
+        var comment = await addResp.Content.ReadFromJsonAsync<CommentResponse>();
+
+        var response = await _client.PutAsJsonAsync($"/posts/preview/{token}/comments/{comment!.Id}",
+            new UpdateCommentRequest("secret123", body));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateComment_BodyTooLong_Returns400()
+    {
+        var (_, token) = await CreatePreviewAsync("comment-update-toolong");
+        var addResp = await _client.PostAsJsonAsync($"/posts/preview/{token}/comments",
+            new CreateCommentRequest("secret123", "Original"));
+        var comment = await addResp.Content.ReadFromJsonAsync<CommentResponse>();
+
+        var response = await _client.PutAsJsonAsync($"/posts/preview/{token}/comments/{comment!.Id}",
+            new UpdateCommentRequest("secret123", new string('x', 5001)));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    // --- DeleteComment ---
+
+    [Fact]
+    public async Task DeleteComment_ValidCredentials_Returns204()
+    {
+        var (_, token) = await CreatePreviewAsync("comment-delete-ok");
+        var addResp = await _client.PostAsJsonAsync($"/posts/preview/{token}/comments",
+            new CreateCommentRequest("secret123", "To be deleted"));
+        var comment = await addResp.Content.ReadFromJsonAsync<CommentResponse>();
+
+        var response = await _client.DeleteAsJsonAsync($"/posts/preview/{token}/comments/{comment!.Id}",
+            new DeleteCommentRequest("secret123"));
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteComment_IsGoneFromList()
+    {
+        var (_, token) = await CreatePreviewAsync("comment-delete-gone");
+        var addResp = await _client.PostAsJsonAsync($"/posts/preview/{token}/comments",
+            new CreateCommentRequest("secret123", "To be deleted"));
+        var comment = await addResp.Content.ReadFromJsonAsync<CommentResponse>();
+
+        await _client.DeleteAsJsonAsync($"/posts/preview/{token}/comments/{comment!.Id}",
+            new DeleteCommentRequest("secret123"));
+
+        var listResp = await _client.PostAsJsonAsync($"/posts/preview/{token}/comments/list",
+            new PreviewAccessRequest("secret123"));
+        var comments = await listResp.Content.ReadFromJsonAsync<List<CommentResponse>>();
+        Assert.DoesNotContain(comments!, c => c.Id == comment.Id);
+    }
+
+    [Fact]
+    public async Task DeleteComment_WrongPassword_Returns401()
+    {
+        var (_, token) = await CreatePreviewAsync("comment-delete-badpw");
+        var addResp = await _client.PostAsJsonAsync($"/posts/preview/{token}/comments",
+            new CreateCommentRequest("secret123", "Original"));
+        var comment = await addResp.Content.ReadFromJsonAsync<CommentResponse>();
+
+        var response = await _client.DeleteAsJsonAsync($"/posts/preview/{token}/comments/{comment!.Id}",
+            new DeleteCommentRequest("wrongpassword"));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteComment_NonExistentComment_Returns401()
+    {
+        var (_, token) = await CreatePreviewAsync("comment-delete-notfound");
+
+        var response = await _client.DeleteAsJsonAsync($"/posts/preview/{token}/comments/99999",
+            new DeleteCommentRequest("secret123"));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
     // --- GetComments ---
 
     [Fact]
