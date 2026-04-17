@@ -35,7 +35,8 @@ public class AdminKeyMiddleware(RequestDelegate next, IConfiguration configurati
     }
 
     private static bool IsWriteMethod(string method) =>
-        HttpMethods.IsPost(method) || HttpMethods.IsPut(method) || HttpMethods.IsDelete(method);
+        HttpMethods.IsPost(method) || HttpMethods.IsPut(method) ||
+        HttpMethods.IsDelete(method) || HttpMethods.IsPatch(method);
 
     private static bool IsPublicWriteEndpoint(HttpRequest request)
     {

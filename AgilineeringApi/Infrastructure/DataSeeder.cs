@@ -7,7 +7,7 @@ namespace AgilineeringApi.Infrastructure;
 
 public class DataSeeder(AppDbContext db, IConfiguration configuration, ILogger<DataSeeder> logger)
 {
-    public async Task SeedAsync()
+    public async Task SeedAsync(CancellationToken ct = default)
     {
         // One-time forced password reset: set Seed:ForceAdminPassword=true + Seed:AdminPassword=<new>
         // Remove the secret after use to prevent repeated resets.
@@ -16,19 +16,19 @@ public class DataSeeder(AppDbContext db, IConfiguration configuration, ILogger<D
             var forcedPassword = configuration["Seed:AdminPassword"];
             if (!string.IsNullOrWhiteSpace(forcedPassword))
             {
-                var adminUser = await db.Users.FirstOrDefaultAsync(u => u.Username == "admin");
+                var adminUser = await db.Users.FirstOrDefaultAsync(u => u.Username == "admin", ct);
                 if (adminUser is not null)
                 {
                     adminUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(forcedPassword, workFactor: SecurityConstants.PasswordHashWorkFactor);
                     adminUser.FailedLoginAttempts = 0;
                     adminUser.LockoutEnd = null;
-                    await db.SaveChangesAsync();
+                    await db.SaveChangesAsync(ct);
                     logger.LogWarning("Admin password forcibly reset via Seed:ForceAdminPassword. Remove this secret now.");
                 }
             }
         }
 
-        if (!await db.Users.AnyAsync())
+        if (!await db.Users.AnyAsync(ct))
         {
             var configuredPassword = configuration["Seed:AdminPassword"];
             string password;
@@ -54,7 +54,7 @@ public class DataSeeder(AppDbContext db, IConfiguration configuration, ILogger<D
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(password, workFactor: SecurityConstants.PasswordHashWorkFactor),
                 Role = "admin"
             });
-            await db.SaveChangesAsync();
+            await db.SaveChangesAsync(ct);
         }
     }
 }

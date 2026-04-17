@@ -71,8 +71,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 var corsOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? [];
-if (corsOrigins.Length == 0)
-    Console.WriteLine("[WARN] Cors:Origins is not configured — all cross-origin requests will be rejected.");
 
 builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>
@@ -92,6 +90,9 @@ using (var scope = app.Services.CreateScope())
     scope.ServiceProvider.GetRequiredService<DatabaseMigrator>().Apply();
     await scope.ServiceProvider.GetRequiredService<DataSeeder>().SeedAsync();
 }
+
+if (corsOrigins.Length == 0)
+    app.Logger.LogWarning("Cors:Origins is not configured — all cross-origin requests will be rejected");
 
 // Resolve real client IP from X-Forwarded-For when running behind a reverse proxy (e.g. Fly.io).
 // This must run before rate limiting so RemoteIpAddress is correct.

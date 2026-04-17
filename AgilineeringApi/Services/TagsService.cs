@@ -10,16 +10,24 @@ public class TagsService(AppDbContext db) : ITagsService
     private const int MaxNameLength = 100;
     private const int MaxSlugLength = 100;
 
-    public async Task<List<TagResponse>> GetAllAsync(CancellationToken ct = default) =>
-        await (from t in db.Tags
-               orderby t.Name
-               select new TagResponse(t.Id, t.Name, t.Slug,
-                   db.Images
-                       .Where(i => i.TagId == t.Id)
-                       .OrderByDescending(i => i.CreatedAt)
-                       .Select(i => "/images/" + i.Filename)
-                       .FirstOrDefault()))
+    public async Task<List<TagResponse>> GetAllAsync(CancellationToken ct = default)
+    {
+        var taggedImages = await db.Images
+            .Where(i => i.TagId != null)
+            .Select(i => new { i.TagId, i.Filename, i.CreatedAt })
             .ToListAsync(ct);
+        var dudeByTag = taggedImages
+            .GroupBy(i => i.TagId!.Value)
+            .ToDictionary(g => g.Key, g => "/images/" + g.OrderByDescending(i => i.CreatedAt).First().Filename);
+
+        var tags = await db.Tags
+            .OrderBy(t => t.Name)
+            .Select(t => new { t.Id, t.Name, t.Slug })
+            .ToListAsync(ct);
+        return tags
+            .Select(t => new TagResponse(t.Id, t.Name, t.Slug, dudeByTag.GetValueOrDefault(t.Id)))
+            .ToList();
+    }
 
     public async Task<ServiceResult<TagResponse>> CreateAsync(CreateTagRequest request, CancellationToken ct = default)
     {
@@ -55,12 +63,9 @@ public class TagsService(AppDbContext db) : ITagsService
 
     public async Task<ServiceResult> DeleteAsync(int id, CancellationToken ct = default)
     {
-        var tag = await db.Tags.FirstOrDefaultAsync(t => t.Id == id, ct);
-        if (tag is null)
-            return ServiceResult.NotFound($"Tag {id} not found.");
-
-        db.Tags.Remove(tag);
-        await db.SaveChangesAsync(ct);
-        return ServiceResult.Ok();
+        var deleted = await db.Tags.Where(t => t.Id == id).ExecuteDeleteAsync(ct);
+        return deleted == 0
+            ? ServiceResult.NotFound($"Tag {id} not found.")
+            : ServiceResult.Ok();
     }
 }
