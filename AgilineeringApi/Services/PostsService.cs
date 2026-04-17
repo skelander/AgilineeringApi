@@ -41,11 +41,14 @@ public class PostsService(AppDbContext db, ILogger<PostsService> logger) : IPost
                 .ToDictionaryAsync(x => x.PostId, x => x.Count, ct)
             : [];
 
+        var allTagIds = posts.SelectMany(p => p.Tags.Select(t => t.Id)).Distinct();
+        var dudeUrls = await GetDudeUrlsAsync(allTagIds, ct);
+
         var items = posts
             .Select(p => new PostSummaryResponse(
                 p.Id, p.Title, p.Slug, p.Published, p.CreatedAt,
                 p.Author.Username,
-                p.Tags.Select(t => new TagResponse(t.Id, t.Name, t.Slug)).ToList(),
+                p.Tags.Select(t => new TagResponse(t.Id, t.Name, t.Slug, dudeUrls.GetValueOrDefault(t.Id))).ToList(),
                 commentCounts.GetValueOrDefault(p.Id)))
             .ToList();
 
@@ -63,7 +66,8 @@ public class PostsService(AppDbContext db, ILogger<PostsService> logger) : IPost
         if (post is null)
             return ServiceResult<PostDetailResponse>.NotFound($"Post '{slug}' not found.");
 
-        return ServiceResult<PostDetailResponse>.Ok(ToDetail(post));
+        var dudeUrls = await GetDudeUrlsAsync(post.Tags.Select(t => t.Id), ct);
+        return ServiceResult<PostDetailResponse>.Ok(ToDetail(post, dudeUrls));
     }
 
     public async Task<ServiceResult<PostDetailResponse>> CreateAsync(CreatePostRequest request, int authorId, CancellationToken ct = default)
@@ -179,9 +183,22 @@ public class PostsService(AppDbContext db, ILogger<PostsService> logger) : IPost
         return null;
     }
 
-    private static PostDetailResponse ToDetail(Post post) => new(
+    private async Task<Dictionary<int, string>> GetDudeUrlsAsync(IEnumerable<int> tagIds, CancellationToken ct)
+    {
+        var ids = tagIds.ToList();
+        if (ids.Count == 0) return [];
+        var images = await db.Images
+            .Where(i => i.TagId != null && ids.Contains(i.TagId!.Value))
+            .Select(i => new { i.TagId, i.Filename, i.CreatedAt })
+            .ToListAsync(ct);
+        return images
+            .GroupBy(i => i.TagId!.Value)
+            .ToDictionary(g => g.Key, g => "/images/" + g.OrderByDescending(i => i.CreatedAt).First().Filename);
+    }
+
+    private static PostDetailResponse ToDetail(Post post, Dictionary<int, string>? dudeUrls = null) => new(
         post.Id, post.Title, post.Content, post.Slug, post.Published,
         post.CreatedAt, post.UpdatedAt,
         post.Author.Username,
-        post.Tags.Select(t => new TagResponse(t.Id, t.Name, t.Slug)));
+        post.Tags.Select(t => new TagResponse(t.Id, t.Name, t.Slug, dudeUrls?.GetValueOrDefault(t.Id))));
 }
