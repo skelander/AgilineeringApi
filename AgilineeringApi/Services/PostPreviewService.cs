@@ -60,10 +60,12 @@ public class PostPreviewService(AppDbContext db, ILogger<PostPreviewService> log
         var post = preview.Post;
         if (post is null)
             return ServiceResult<PostDetailResponse>.NotFound("The post associated with this preview no longer exists.");
+
+        var dudeUrls = await GetDudeUrlsAsync(post.Tags.Select(t => t.Id), ct);
         return ServiceResult<PostDetailResponse>.Ok(new PostDetailResponse(
             post.Id, post.Title, post.Content, post.Slug, post.Published,
             post.CreatedAt, post.UpdatedAt, post.Author.Username,
-            post.Tags.Select(t => new TagResponse(t.Id, t.Name, t.Slug))));
+            post.Tags.Select(t => new TagResponse(t.Id, t.Name, t.Slug, dudeUrls.GetValueOrDefault(t.Id)))));
     }
 
     public async Task<ServiceResult<CommentResponse>> AddCommentAsync(string token, CreateCommentRequest request, CancellationToken ct = default)
@@ -178,6 +180,19 @@ public class PostPreviewService(AppDbContext db, ILogger<PostPreviewService> log
         return previews.Select(pp => new PreviewWithCommentsResponse(
             pp.Id, pp.Token, pp.CreatedAt, pp.LastAccessedAt,
             commentsLookup[pp.Id].Select(c => new CommentResponse(c.Id, c.Body, c.CreatedAt))));
+    }
+
+    private async Task<Dictionary<int, string>> GetDudeUrlsAsync(IEnumerable<int> tagIds, CancellationToken ct)
+    {
+        var ids = tagIds.ToList();
+        if (ids.Count == 0) return [];
+        var images = await db.Images
+            .Where(i => i.TagId != null && ids.Contains(i.TagId!.Value))
+            .Select(i => new { i.TagId, i.Filename, i.CreatedAt })
+            .ToListAsync(ct);
+        return images
+            .GroupBy(i => i.TagId!.Value)
+            .ToDictionary(g => g.Key, g => "/images/" + g.OrderByDescending(i => i.CreatedAt).First().Filename);
     }
 
     private static bool VerifyCredentials(PostPreview preview, string password) =>

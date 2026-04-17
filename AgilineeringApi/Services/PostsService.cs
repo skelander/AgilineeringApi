@@ -41,14 +41,12 @@ public class PostsService(AppDbContext db, ILogger<PostsService> logger) : IPost
                 .ToDictionaryAsync(x => x.PostId, x => x.Count, ct)
             : [];
 
-        var allTagIds = posts.SelectMany(p => p.Tags.Select(t => t.Id)).Distinct();
-        var dudeUrls = await GetDudeUrlsAsync(allTagIds, ct);
-
+        // Dude images are not shown in post listings — only on the full post view.
         var items = posts
             .Select(p => new PostSummaryResponse(
                 p.Id, p.Title, p.Slug, p.Published, p.CreatedAt,
                 p.Author.Username,
-                p.Tags.Select(t => new TagResponse(t.Id, t.Name, t.Slug, dudeUrls.GetValueOrDefault(t.Id))).ToList(),
+                p.Tags.Select(t => new TagResponse(t.Id, t.Name, t.Slug)).ToList(),
                 commentCounts.GetValueOrDefault(p.Id)))
             .ToList();
 

@@ -61,7 +61,7 @@ public class PostPreviewAccessController(IPostPreviewService previewService) : C
     }
 
     [HttpPost("{token}/comments/list")]
-    [EnableRateLimiting("read")]
+    [EnableRateLimiting("login")]
     public async Task<IActionResult> GetComments(string token, [FromBody] PreviewAccessRequest request, CancellationToken ct = default)
     {
         var validationError = PreviewPasswordValidator.Validate(request.Password, this);
