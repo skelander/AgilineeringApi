@@ -10,6 +10,7 @@ namespace AgilineeringApi.Services;
 public class ImagesService(AppDbContext db, IOptions<ImagesOptions> imagesOptions, ILogger<ImagesService> logger) : IImagesService
 {
     private static readonly HashSet<string> AllowedExtensions = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
+    private const int MaxOriginalFilenameLength = 500;
 
     // Magic bytes validate that file contents match the declared type, preventing polyglot file attacks
     private static readonly Dictionary<string, (int Offset, byte[])[]> MagicBytes = new()
@@ -54,6 +55,9 @@ public class ImagesService(AppDbContext db, IOptions<ImagesOptions> imagesOption
         if (file.Length > maxFileSize)
             return ServiceResult<string>.BadRequest($"File must be {maxFileSize / (1024d * 1024d):F0} MB or smaller.");
 
+        if (file.FileName.Length > MaxOriginalFilenameLength)
+            return ServiceResult<string>.BadRequest($"Filename must be {MaxOriginalFilenameLength} characters or fewer.");
+
         var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
         if (!AllowedExtensions.Contains(ext))
             return ServiceResult<string>.BadRequest("Only jpg, jpeg, png, gif, and webp images are allowed.");
@@ -82,12 +86,10 @@ public class ImagesService(AppDbContext db, IOptions<ImagesOptions> imagesOption
 
     public async Task<ServiceResult> DeleteAsync(string filename, CancellationToken ct = default)
     {
-        var image = await db.Images.FirstOrDefaultAsync(i => i.Filename == filename, ct);
-        if (image is null)
+        var deleted = await db.Images.Where(i => i.Filename == filename).ExecuteDeleteAsync(ct);
+        if (deleted == 0)
             return ServiceResult.NotFound("Image not found.");
 
-        db.Images.Remove(image);
-        await db.SaveChangesAsync(ct);
         logger.LogInformation("Image {Filename} removed", filename);
         return ServiceResult.Ok();
     }
