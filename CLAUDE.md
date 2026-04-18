@@ -56,6 +56,7 @@ AgilineeringApi.Tests/
 - `GET /images/{filename}` — publikt, serverar bildfil
 - `POST /images` — kräver JWT (admin), laddar upp bild
 - `DELETE /images/{filename}` — kräver JWT (admin)
+- `PATCH /images/{filename}` — kräver JWT (admin), sätter tagg på bild
 - `GET /posts/{postId}/previews` — kräver JWT (admin), listar förhandsvisningar
 - `POST /posts/{postId}/previews` — kräver JWT (admin), skapar förhandsvisning
 - `GET /posts/preview/{token}` — publikt, kontrollerar token
@@ -70,7 +71,7 @@ AgilineeringApi.Tests/
 - Services beror på AppDbContext och IConfiguration — aldrig på controllers
 - JWT: HS256, 8h, claims: NameIdentifier (userId) + Name + Role
 - Nyckel från `Jwt:Key` config (Fly.io-secret i produktion)
-- `ServiceResult<T>` och `ServiceResult` för tjänsteresultat: Ok/NotFound/Forbidden/Conflict
+- `ServiceResult<T>` och `ServiceResult` för tjänsteresultat: Ok/NotFound/Forbidden/Conflict/BadRequest
 
 ## Kodstil
 - C# primary constructors
@@ -91,8 +92,8 @@ AgilineeringApi.Tests/
 
 ## Infrastruktur
 - GitHub repo: https://github.com/skelander/AgilineeringApi
-- API: https://forwardagility-rikard.fly.dev
-- SQLite-volym: `forwardagility_data` på `/data/forwardagility.db`
+- API: https://agilineering-rikard.fly.dev
+- SQLite-volym: `agilineering_data` på `/data/agilineering.db`
 - Seedade användare: `admin` / `admin` (admin-roll)
 
 ---

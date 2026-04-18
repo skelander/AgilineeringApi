@@ -38,11 +38,11 @@ The following items were identified during a security audit and consciously acce
 
 ---
 
-### Image upload: no magic-byte verification
+### Image upload: magic-byte verification implemented
 
-**Finding (A04):** Uploaded images are validated by extension and MIME type only. A file renamed to `.jpg` with non-image content passes the check.
-**Decision:** Accepted. Implementing full magic-byte or re-encoding validation adds significant complexity.
-**Mitigation:**
+**Finding (A04):** Uploaded images must match their declared extension at the byte level.
+**Implementation:** `ImagesService.UploadAsync` reads the file header and checks magic bytes for all supported formats (jpg, png, gif, webp). Files whose contents do not match the declared extension are rejected with 400.
+**Remaining mitigations:**
 - Upload is restricted to authenticated admins only — not a public endpoint.
 - Uploaded files are stored with random GUID filenames, stripping any executable name.
 - The `X-Content-Type-Options: nosniff` header prevents browsers from sniffing content type.
